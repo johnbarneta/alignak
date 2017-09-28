@@ -95,30 +95,51 @@ class Arbiter(Daemon):  # pylint: disable=R0902
     properties.update({
         'daemon_type':
             StringProp(default='arbiter'),
-        'pidfile':
-            PathProp(default='arbiterd.pid'),
         'port':
-            IntegerProp(default=7770),
-        'local_log':
-            PathProp(default='arbiterd.log'),
+            IntegerProp(default=7770)
     })
 
     # pylint: disable=too-many-arguments
-    def __init__(self, config_file, monitoring_files, is_daemon, do_replace, verify_only, debug,
-                 debug_file, alignak_name, analyse=None,
-                 port=None, local_log=None, daemon_name=None):
-        self.daemon_name = 'arbiter'
-        if daemon_name:
-            self.daemon_name = daemon_name
+    def __init__(self, **kwargs):
+        self.monitoring_config_files = []
 
-        super(Arbiter, self).__init__(self.daemon_name, config_file, is_daemon, do_replace,
-                                      debug, debug_file, port, local_log)
+        self.daemon_name = 'arbiter-master'
+        if 'daemon_name' in kwargs and kwargs['daemon_name']:
+            self.daemon_name = kwargs['daemon_name']
 
-        self.config_files = monitoring_files
-        self.verify_only = verify_only
-        self.analyse = analyse
-        self.arbiter_name = alignak_name
-        self.alignak_name = None
+        super(Arbiter, self).__init__(self.daemon_name, **kwargs)
+
+        # Specific arbiter command line parameters
+        if 'monitoring_files' in kwargs and kwargs['monitoring_files']:
+            logger.warning(
+                "Using daemon configuration file is now deprecated. The arbiter daemon -a "
+                "parameter should not be used anymore. Use the -e environment file "
+                "parameter to provide a global Alignak configuration file. "
+                "** Note that this feature is not removed because it is still used "
+                "for the unit tests of the Alignak framework! If some monitoring files are "
+                "present in the command line parameters, they will supersede the ones "
+                "declared in the environment configuration file.")
+            # Monitoring files in the arguments overload the ones defined
+            # in the environment configuration file
+            self.monitoring_config_files = kwargs['monitoring_files']
+        if not self.monitoring_config_files:
+            sys.exit("The Alignak environment file is not existing or do not define "
+                     "any monitoring configuration files. "
+                     "The arbiter can not start correctly.")
+
+        print("Arbiter daemon '%s' has some monitoring configuration files: %s"
+              % (self.name, self.monitoring_config_files))
+
+        self.verify_only = False
+        if 'verify_only' in kwargs and kwargs['verify_only']:
+            self.verify_only = kwargs.get('verify_only', False)
+        self.analyse = None
+        if 'analyse' in kwargs and kwargs['analyse']:
+            self.analyse = kwargs.get('analyse', False)
+        self.alignak_name = self.daemon_name
+        if 'alignak_name' in kwargs and kwargs['alignak_name']:
+            self.alignak_name = kwargs['alignak_name']
+        self.arbiter_name = self.alignak_name
 
         self.broks = {}
         self.is_master = False
@@ -251,7 +272,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         logger.info("Loading configuration")
         # REF: doc/alignak-conf-dispatching.png (1)
-        buf = self.conf.read_config(self.config_files)
+        buf = self.conf.read_config(self.monitoring_config_files)
         raw_objects = self.conf.read_config_buf(buf)
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
@@ -548,10 +569,12 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 ret = self.my_satellites[daemon_name].poll()
                 if ret is not None:
                     logger.error("*** %s exited on start!", daemon_name)
-                    for line in iter(self.my_satellites[daemon_name].stdout.readline, b''):
-                        logger.error(">>> " + line.rstrip())
-                    for line in iter(self.my_satellites[daemon_name].stderr.readline, b''):
-                        logger.error(">>> " + line.rstrip())
+                    if self.my_satellites[daemon_name].stdout:
+                        for line in iter(self.my_satellites[daemon_name].stdout.readline, b''):
+                            logger.error(">>> " + line.rstrip())
+                    if self.my_satellites[daemon_name].stderr:
+                        for line in iter(self.my_satellites[daemon_name].stderr.readline, b''):
+                            logger.error(">>> " + line.rstrip())
                     result = False
                 else:
                     logger.info("%s running (pid=%d)",
