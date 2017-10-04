@@ -327,7 +327,7 @@ class BaseSatellite(Daemon):
 
         # If I am a broker and I reconnect to my scheduler
         # pylint: disable=E1101
-        if self.daemon_type == 'broker' and s_type == 'scheduler':
+        if self.type == 'broker' and s_type == 'scheduler':
             logger.info("[%s] Asking initial broks from '%s'", self.name, link['name'])
             try:
                 _t0 = time.time()

@@ -89,7 +89,7 @@ class Broker(BaseSatellite):
     """
     properties = BaseSatellite.properties.copy()
     properties.update({
-        'daemon_type':
+        'type':
             StringProp(default='broker'),
         'port':
             IntegerProp(default=7772)

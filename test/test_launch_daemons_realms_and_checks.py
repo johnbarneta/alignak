@@ -207,8 +207,8 @@ class TestLaunchDaemonsRealms(AlignakTest):
                 "[alignak.action] Action '/tmp/dummy_command.sh 2' exited with return code 2",
                 "[alignak.action] Check result for '/tmp/dummy_command.sh 2': 2, Hi, I'm the dummy check.",
                 # Check timeout
-                "[alignak.action] Launch command: '/tmp/dummy_command.sh 0 10'",
-                "[alignak.action] Action '/tmp/dummy_command.sh 0 10' exited on timeout (5 s)",
+                "[alignak.action] Launch command: '/tmp/dummy_command.sh 0 12'",
+                "[alignak.action] Action '/tmp/dummy_command.sh 0 12' exited on timeout (5 s)",
                 # Check unknown
                 "[alignak.action] Launch command: '/tmp/dummy_command.sh'",
                 "[alignak.action] Action '/tmp/dummy_command.sh' exited with return code 3",

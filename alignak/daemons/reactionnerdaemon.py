@@ -73,7 +73,7 @@ class Reactionner(Satellite):
 
     properties = Satellite.properties.copy()
     properties.update({
-        'daemon_type':
+        'type':
             StringProp(default='reactionner'),
         'port':
             IntegerProp(default=7769)

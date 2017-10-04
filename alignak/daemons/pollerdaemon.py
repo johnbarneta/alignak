@@ -60,7 +60,7 @@ class Poller(Satellite):
 
     properties = Satellite.properties.copy()
     properties.update({
-        'daemon_type':
+        'type':
             StringProp(default='poller'),
         'port':
             IntegerProp(default=7771)

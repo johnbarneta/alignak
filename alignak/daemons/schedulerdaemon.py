@@ -79,7 +79,7 @@ class Alignak(BaseSatellite):
 
     properties = BaseSatellite.properties.copy()
     properties.update({
-        'daemon_type':
+        'type':
             StringProp(default='scheduler'),
         'port':
             IntegerProp(default=7768)

@@ -77,7 +77,7 @@ class Receiver(Satellite):
 
     properties = Satellite.properties.copy()
     properties.update({
-        'daemon_type':
+        'type':
             StringProp(default='receiver'),
         'port':
             IntegerProp(default=7773)
