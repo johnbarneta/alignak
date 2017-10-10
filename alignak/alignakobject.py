@@ -27,8 +27,8 @@ from alignak.property import SetProp, StringProp
 
 
 class AlignakObject(object):
-    """This class provide a generic way to instantiate alignak objects.
-    Attribute are ser dynamically, whether we un-serialize them create them at run / parsing time
+    """This class provides a generic way to instantiate alignak objects.
+    Attribute are serialized dynamically, whether we un-serialize them create them at run / parsing time
 
     """
 
@@ -52,7 +52,7 @@ class AlignakObject(object):
             self.uuid = uuid.uuid4().hex
 
     def serialize(self):
-        """This function serialize into a simple dict object.
+        """This function serializes into a simple dict object.
         It is used when transferring data to other daemons over the network (http)
 
         Here is the generic function that simply export attributes declared in the

@@ -118,7 +118,7 @@ class AlignakTest(unittest.TestCase):
         collector_h.setFormatter(DEFAULT_FORMATTER_NAMED)
         self.logger.addHandler(collector_h)
 
-    def files_update(self, files, replacements):
+    def _files_update(self, files, replacements):
         """Update files content with the defined replacements
 
         :param files: list of files to parse and replace

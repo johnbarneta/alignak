@@ -789,15 +789,19 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
     read_config_silent = False
 
-    early_created_types = ['arbiter', 'module']
+    early_created_types = ['arbiter', 'scheduler', 'reactionner', 'broker', 'receiver', 'poller',
+                           'module']
 
-    configuration_types = ['void', 'timeperiod', 'command', 'contactgroup', 'hostgroup',
-                           'contact', 'notificationway', 'checkmodulation',
-                           'macromodulation', 'host', 'service', 'servicegroup',
-                           'servicedependency', 'hostdependency', 'arbiter', 'scheduler',
-                           'reactionner', 'broker', 'receiver', 'poller', 'realm', 'module',
-                           'resultmodulation', 'escalation', 'serviceescalation', 'hostescalation',
-                           'businessimpactmodulation', 'hostextinfo', 'serviceextinfo']
+    configuration_types = ['void', 'timeperiod', 'command',
+                           'realm',
+                           'host', 'hostgroup', 'hostdependency', 'hostextinfo',
+                           'service', 'servicegroup', 'servicedependency', 'serviceextinfo',
+                           'contact', 'contactgroup',
+                           'notificationway', 'escalation', 'serviceescalation', 'hostescalation',
+                           'checkmodulation', 'macromodulation', 'resultmodulation',
+                           'businessimpactmodulation',
+                           'arbiter', 'scheduler', 'reactionner', 'broker', 'receiver', 'poller',
+                           'module']
 
     def __init__(self, params=None, parsing=True):
         if params is None:
@@ -971,13 +975,15 @@ class Config(Item):  # pylint: disable=R0904,R0902
         # just a first pass to get the cfg_file and all files in a buf
         res = StringIO()
 
+        if not self.read_config_silent:
+            logger.info("Reading the configuration files...")
         for c_file in files:
             # We add a \n (or \r\n) to be sure config files are separated
             # if the previous does not finish with a line return
             res.write(os.linesep)
             res.write('# IMPORTEDFROM=%s' % (c_file) + os.linesep)
             if not self.read_config_silent:
-                logger.info("[config] opening '%s' configuration file", c_file)
+                logger.info("- opening '%s' configuration file", c_file)
             try:
                 # Open in Universal way for Windows, Mac, Linux-based systems
                 file_d = open(c_file, 'rU')
@@ -987,8 +993,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
                 # Update macro used properties
                 self.main_config_file = os.path.abspath(c_file)
             except IOError, exp:
-                msg = "[config] cannot open main config file '%s' for reading: %s" % (c_file, exp)
-                self.add_error(msg)
+                self.add_error("cannot open main file '%s' for reading: %s"
+                               % (c_file, exp))
                 continue
 
             for line in buf:
@@ -1007,17 +1013,15 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     try:
                         file_d = open(cfg_file_name, 'rU')
                         if not self.read_config_silent:
-                            logger.info("Processing object config file '%s'", cfg_file_name)
+                            logger.info("- reading file '%s'", cfg_file_name)
                         res.write(os.linesep + '# IMPORTEDFROM=%s' % (cfg_file_name) + os.linesep)
                         res.write(file_d.read().decode('utf8', 'replace'))
                         # Be sure to add a line return so we won't mix files
                         res.write(os.linesep)
                         file_d.close()
                     except IOError, exp:
-                        msg = "[config] cannot open config file '%s' for reading: %s" % (
-                            cfg_file_name, exp
-                        )
-                        self.add_error(msg)
+                        self.add_error("cannot open file '%s' for reading: %s"
+                                       % (cfg_file_name, exp))
                 elif re.search("^cfg_dir", line):
                     elts = line.split('=', 1)
                     if os.path.isabs(elts[1]):
@@ -1026,33 +1030,32 @@ class Config(Item):  # pylint: disable=R0904,R0902
                         cfg_dir_name = os.path.join(self.config_base_dir, elts[1])
                     # Ok, look if it's really a directory
                     if not os.path.isdir(cfg_dir_name):
-                        msg = "[config] cannot open config dir '%s' for reading" % \
-                              (cfg_dir_name)
-                        self.add_error(msg)
+                        self.add_error("cannot open directory '%s' for reading" %
+                                       (cfg_dir_name))
 
-                    # Look for .pack file into it :)
+                    # I will look later for .pack file into this directory :)
                     self.packs_dirs.append(cfg_dir_name)
 
                     # Now walk for it.
                     for root, _, walk_files in os.walk(cfg_dir_name, followlinks=True):
-                        for pack_file in walk_files:
-                            if not re.search(r"\.cfg$", pack_file):
+                        for found_file in walk_files:
+                            if not re.search(r"\.cfg$", found_file):
                                 continue
                             if not self.read_config_silent:
-                                logger.info("Processing object config file '%s'",
-                                            os.path.join(root, pack_file))
+                                logger.info("  reading: %s", os.path.join(root, found_file))
                             try:
+                                # Track the importation source
                                 res.write(os.linesep + '# IMPORTEDFROM=%s' %
-                                          (os.path.join(root, pack_file)) + os.linesep)
-                                file_d = open(os.path.join(root, pack_file), 'rU')
+                                          (os.path.join(root, found_file)) + os.linesep)
+                                # Read the file content to the buffer
+                                file_d = open(os.path.join(root, found_file), 'rU')
                                 res.write(file_d.read().decode('utf8', 'replace'))
                                 # Be sure to separate files data
                                 res.write(os.linesep)
                                 file_d.close()
                             except IOError as exp:  # pragma: no cover, simple protection
-                                msg = "[config] cannot open pack file '%s' for reading: %s" % \
-                                      (os.path.join(root, c_file), exp)
-                                self.add_error(msg)
+                                self.add_error("cannot open file '%s' for reading: %s"
+                                               % (os.path.join(root, c_file), exp))
                 elif re.search("^triggers_dir", line):
                     elts = line.split('=', 1)
                     if os.path.isabs(elts[1]):
@@ -1061,9 +1064,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
                         trig_dir_name = os.path.join(self.config_base_dir, elts[1])
                     # Ok, look if it's really a directory
                     if not os.path.isdir(trig_dir_name):
-                        msg = "[config] cannot open triggers dir '%s' for reading" % \
-                              (trig_dir_name)
-                        self.add_error(msg)
+                        self.add_error("cannot open triggers directory '%s' for reading"
+                                       % (trig_dir_name))
                         continue
                     # Ok it's a valid one, I keep it
                     self.triggers_dirs.append(trig_dir_name)
@@ -1092,10 +1094,11 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
         :rtype: dict
         """
+        if not self.read_config_silent:
+            logger.info("Parsing the configuration files...")
         params = []
         objectscfg = {}
-        types = self.__class__.configuration_types
-        for o_type in types:
+        for o_type in self.__class__.configuration_types:
             objectscfg[o_type] = []
 
         tmp = []
@@ -1167,6 +1170,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
                 else:
                     params.append(line)
 
+        # todo: this looks unuseful...
         # Maybe the type of the last element is unknown, declare it
         if tmp_type not in objectscfg:
             objectscfg[tmp_type] = []
@@ -1462,14 +1466,14 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     t00 = time.time()
                     conf_id = conf.uuid
                     realm.serialized_confs[conf_id] = serialize(conf)
-                    logger.debug("[config] time to serialize the conf %s:%s is %s (size:%s)",
+                    logger.debug("time to serialize the conf %s:%s is %s (size:%s)",
                                  realm.get_name(), i, time.time() - t00,
                                  len(realm.serialized_confs[conf_id]))
                     logger.debug("SERIALIZE LEN : %d", len(realm.serialized_confs[conf_id]))
             # Now serialize the whole conf, for easy and quick spare send
             t00 = time.time()
             whole_conf_pack = serialize(self)
-            logger.debug("[config] time to serialize the global conf : %s (size:%s)",
+            logger.debug("time to serialize the global conf : %s (size:%s)",
                          time.time() - t00, len(whole_conf_pack))
             self.whole_conf_pack = whole_conf_pack
             logger.debug("[config]serializing total: %s", (time.time() - t01))
@@ -1499,7 +1503,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
                         logger.debug('[%s] Serializing the configuration %d', rname, cid)
                         t00 = time.time()
                         res = serialize(conf)
-                        logger.debug("[config] time to serialize the conf %s:%s is %s (size:%s)",
+                        logger.debug("time to serialize the conf %s:%s is %s (size:%s)",
                                      rname, cid, time.time() - t00, len(res))
                         comm_q.append((cid, res))
 
@@ -1543,9 +1547,9 @@ class Config(Item):  # pylint: disable=R0904,R0902
             def create_whole_conf_pack(whole_queue, self):
                 """The function that just compute the whole conf serialize string, but n a children
                 """
-                logger.debug("[config] sub processing the whole configuration pack creation")
+                logger.debug("sub processing the whole configuration pack creation")
                 whole_queue.append(serialize(self))
-                logger.debug("[config] sub processing the whole configuration pack creation "
+                logger.debug("sub processing the whole configuration pack creation "
                              "finished")
             # Go for it
             proc = Process(target=create_whole_conf_pack,
@@ -1564,7 +1568,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
             # Get it and save it
             self.whole_conf_pack = whole_queue.pop()
-            logger.debug("[config] time to serialize the global conf : %s (size:%s)",
+            logger.debug("time to serialize the global conf : %s (size:%s)",
                          time.time() - t00, len(self.whole_conf_pack))
 
             # Shutdown the manager, the sub-process should be gone now
@@ -1781,14 +1785,14 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
         :return:
         """
-        satellites = [self.schedulers, self.pollers, self.brokers,
+        daemons = [self.arbiters, self.schedulers, self.pollers, self.brokers,
                       self.reactionners, self.receivers]
-        for satellites_list in satellites:
-            if not satellites_list:
-                logger.info("- %ss: None", satellites_list.inner_class.my_type)
+        for daemons_list in daemons:
+            if not daemons_list:
+                logger.info("- %ss: None", daemons_list.inner_class.my_type)
             else:
-                logger.info("- %ss: %s", satellites_list.inner_class.my_type,
-                            ','.join([daemon.get_name() for daemon in satellites_list]))
+                logger.info("- %ss: %s", daemons_list.inner_class.my_type,
+                            ','.join([daemon.get_name() for daemon in daemons_list]))
 
     def fill_default_satellites(self):
         # pylint: disable=too-many-branches
@@ -2216,7 +2220,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
             logger.info('Alignak name is not defined, using the main arbiter name...')
             for arbiter in self.arbiters:
                 if not arbiter.spare:
-                    self.alignak_name = arbiter.arbiter_name
+                    self.alignak_name = arbiter.name
                     break
         logger.info('Alignak name is: %s', self.alignak_name)
 
@@ -2384,29 +2388,6 @@ class Config(Item):  # pylint: disable=R0904,R0902
         self.hostdependencies.remove_templates()
         self.timeperiods.remove_templates()
 
-    def add_error(self, txt):
-        """Add a message in the configuration errors list so we can print them
-         all in one place
-
-         Set the configuration as not valid
-
-        :param txt: error message
-        :type txt: str
-        :return: None
-        """
-        self.configuration_errors.append(txt)
-        self.conf_is_correct = False
-
-    def add_warning(self, txt):
-        """Add a message in the configuration warnings list so we can print them
-         all in one place
-
-        :param txt: warning message
-        :type txt: str
-        :return: None
-        """
-        self.configuration_warnings.append(txt)
-
     def show_errors(self):
         """
         Loop over configuration warnings and log them as INFO log
@@ -2418,6 +2399,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
         :return:  None
         """
+        logger.warning("Configuration is correct: %s", self.conf_is_correct)
         if self.configuration_warnings:
             logger.info("Configuration warnings:")
             for msg in self.configuration_warnings:

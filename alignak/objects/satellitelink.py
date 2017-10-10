@@ -49,6 +49,7 @@ import logging
 from alignak.util import get_obj_name_two_args_and_void
 from alignak.misc.serialization import unserialize, AlignakClassLookupException
 from alignak.objects.item import Item, Items
+from alignak.daemon import Daemon
 from alignak.property import BoolProp, IntegerProp, StringProp, ListProp, DictProp, AddrProp
 from alignak.http.client import HTTPClient, HTTPClientException
 from alignak.http.client import HTTPClientConnectionException, HTTPClientTimeoutException
@@ -63,7 +64,10 @@ class SatelliteLink(Item):
     """
 
     properties = Item.properties.copy()
+    # A SatelliteLink is and Item but it inherits from the properties of its related daemon
+    properties.update(Daemon.properties.copy())
     properties.update({
+        # Address used by the other daemons
         'address':
             StringProp(default='localhost', fill_brok=['full_status']),
         'timeout':
@@ -89,8 +93,6 @@ class SatelliteLink(Item):
         'realm':
             StringProp(default='', fill_brok=['full_status'],
                        brok_transformation=get_obj_name_two_args_and_void),
-        'realm_name':
-            StringProp(default=''),
         'satellitemap':
             DictProp(default={}, elts_prop=AddrProp, to_send=True, override=True),
         'use_ssl':
@@ -100,6 +102,47 @@ class SatelliteLink(Item):
         'passive':
             BoolProp(default=False, fill_brok=['full_status'], to_send=True),
     })
+    # properties.update({
+    #     'type':
+    #         StringProp(default='', fill_brok=['full_status']),
+    #     'name':
+    #         StringProp(default='', fill_brok=['full_status']),
+    #     'address':
+    #         StringProp(default='localhost', fill_brok=['full_status']),
+    #     'timeout':
+    #         IntegerProp(default=3, fill_brok=['full_status']),
+    #     'data_timeout':
+    #         IntegerProp(default=120, fill_brok=['full_status']),
+    #     'check_interval':
+    #         IntegerProp(default=60, fill_brok=['full_status']),
+    #     'max_check_attempts':
+    #         IntegerProp(default=3, fill_brok=['full_status']),
+    #     'spare':
+    #         BoolProp(default=False, fill_brok=['full_status']),
+    #     'manage_sub_realms':
+    #         BoolProp(default=False, fill_brok=['full_status']),
+    #     'manage_arbiters':
+    #         BoolProp(default=False, fill_brok=['full_status'], to_send=True),
+    #     'modules':
+    #         ListProp(default=[''], to_send=True, split_on_coma=True),
+    #     'polling_interval':
+    #         IntegerProp(default=1, fill_brok=['full_status'], to_send=True),
+    #     'use_timezone':
+    #         StringProp(default='NOTSET', to_send=True),
+    #     'realm':
+    #         StringProp(default='', fill_brok=['full_status'],
+    #                    brok_transformation=get_obj_name_two_args_and_void),
+    #     'realm_name':
+    #         StringProp(default=''),
+    #     'satellitemap':
+    #         DictProp(default={}, elts_prop=AddrProp, to_send=True, override=True),
+    #     'use_ssl':
+    #         BoolProp(default=False, fill_brok=['full_status']),
+    #     'hard_ssl_name_check':
+    #         BoolProp(default=True, fill_brok=['full_status']),
+    #     'passive':
+    #         BoolProp(default=False, fill_brok=['full_status'], to_send=True),
+    # })
 
     running_properties = Item.running_properties.copy()
     running_properties.update({
@@ -109,6 +152,10 @@ class SatelliteLink(Item):
             BoolProp(default=True, fill_brok=['full_status']),
         'broks':
             StringProp(default=[]),
+
+        # todo: necessary?
+        'realm_name':
+            StringProp(default=''),
 
         # the number of poll attempt from the arbiter dispatcher
         'attempt':
@@ -136,18 +183,18 @@ class SatelliteLink(Item):
     })
 
     def __init__(self, *args, **kwargs):
+        # Define the name property of the satellite from its type
+        if 'name' in kwargs and kwargs['name']:
+            setattr(self, self.get_my_type() + '_name', kwargs['name'])
+
         super(SatelliteLink, self).__init__(*args, **kwargs)
 
         self.fill_default()
 
-        self.arb_satmap = {'address': '0.0.0.0', 'port': 0}
-        if hasattr(self, 'address'):
-            self.arb_satmap['address'] = self.address
-        if hasattr(self, 'port'):
-            try:
-                self.arb_satmap['port'] = int(self.port)
-            except ValueError:  # pragma: no cover, simple protection
-                logger.error("Satellite port must be an integer: %s", self.port)
+        self.arb_satmap = {
+            'address': getattr(self, 'address', None),
+            'port': getattr(self, 'port', None)
+        }
 
         # Create the link connection
         if not self.con:
@@ -162,8 +209,9 @@ class SatelliteLink(Item):
         :return: String corresponding to the link name
         :rtype: str
         """
-        return getattr(self, "{0}_name".format(self.get_my_type()),
-                       "Unnamed {0}".format(self.get_my_type()))
+        return self.name
+        # return getattr(self, "{0}_name".format(self.get_my_type()),
+        #                "Unnamed {0}".format(self.get_my_type()))
 
     def set_arbiter_satellitemap(self, satellitemap):
         """
@@ -703,8 +751,8 @@ class SatelliteLink(Item):
 class SatelliteLinks(Items):
     """Class to handle serveral SatelliteLink"""
 
-    # name_property = "name"
-    # inner_class = SchedulerLink
+    name_property = "name"
+    inner_class = SatelliteLink
 
     def linkify(self, realms, modules):
         """Link realms and modules in all SatelliteLink

@@ -103,7 +103,7 @@ class AlignakTest(unittest2.TestCase):
         collector_h.setFormatter(DEFAULT_FORMATTER_NAMED)
         self.logger.addHandler(collector_h)
 
-    def files_update(self, files, replacements):
+    def _files_update(self, files, replacements):
         """Update files content with the defined replacements
 
         :param files: list of files to parse and replace
@@ -973,44 +973,8 @@ class AlignakTest(unittest2.TestCase):
             or 'ascii'
         )
 
-    def safe_print(self, *args, **kw):
-        """" "print" args to sys.stdout,
-        If some of the args aren't unicode then convert them first to unicode,
-            using keyword argument 'in_encoding' if provided (else default to UTF8)
-            and replacing bad encoded bytes.
-        Write to stdout using 'out_encoding' if provided else best guessed encoding,
-            doing xmlcharrefreplace on errors.
-        """
-        in_bytes_encoding = kw.pop('in_encoding', 'UTF-8')
-        out_encoding = kw.pop('out_encoding', self.guess_sys_stdout_encoding())
-        if kw:
-            raise ValueError('unhandled named/keyword argument(s): %r' % kw)
-        #
-        make_in_data_gen = lambda: ( a if isinstance(a, unicode)
-                                    else
-                                unicode(str(a), in_bytes_encoding, 'replace')
-                            for a in args )
-
-        possible_codings = ( out_encoding, )
-        if out_encoding != 'ascii':
-            possible_codings += ( 'ascii', )
-
-        for coding in possible_codings:
-            data = u' '.join(make_in_data_gen()).encode(coding, 'xmlcharrefreplace')
-            try:
-                sys.stdout.write(data)
-                break
-            except UnicodeError as err:
-                # there might still have some problem with the underlying sys.stdout.
-                # it might be a StringIO whose content could be decoded/encoded in this same process
-                # and have encode/decode errors because we could have guessed a bad encoding with it.
-                # in such case fallback on 'ascii'
-                if coding == 'ascii':
-                    raise
-                sys.stderr.write('Error on write to sys.stdout with %s encoding: err=%s\nTrying with ascii' % (
-                    coding, err))
-        sys.stdout.write(b'\n')
-
+# Time hacking for every test!
+time_hacker = AlignakTest.time_hacker
 
 if __name__ == '__main__':
     unittest2.main()

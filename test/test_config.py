@@ -730,11 +730,13 @@ class TestConfig(AlignakTest):
         with pytest.raises(SystemExit):
             self.setup_with_file('cfg/cfg_bad_contact_in_service.cfg')
         assert not self.conf_is_correct
+        self.show_logs()
         self.show_configuration_logs()
 
         # The service got a unknown contact. It should raise an error
         svc = self.arbiter.conf.services.find_srv_by_name_and_hostname("test_host_0",
                                                                        "test_ok_0_badcon")
+        print "Svc:", svc
         print "Contacts:", svc.contacts
         assert not svc.is_correct()
         self.assert_any_cfg_log_match(

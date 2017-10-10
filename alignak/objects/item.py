@@ -98,23 +98,25 @@ class Item(AlignakObject):
             IntegerProp(default=100),
         # TODO: find why we can't uncomment this line below.
         'register':
-            BoolProp(default=True),
+            BoolProp(default=True)
     })
 
     running_properties = {
         # All errors and warning raised during the configuration parsing
-        # and that will raised real warning/errors during the is_correct
+        # and that will raise real warning/errors during the configuration is_correct check
+        'conf_is_correct':
+            BoolProp(default=True),
         'configuration_warnings':
             ListProp(default=[]),
         'configuration_errors':
             ListProp(default=[]),
-        # We save all template we asked us to load from
+        # We save all templates we asked us to load from
         'tags':
             SetProp(default=set(), fill_brok=['full_status']),
         # used by host, service and contact
+        # todo: conceptually this should be moved to the SchedulingItem and Contact objects...
         'downtimes':
             DictProp(default={}, fill_brok=['full_status'], retention=True),
-
     }
 
     macros = {
@@ -125,8 +127,11 @@ class Item(AlignakObject):
 
     def __init__(self, params=None, parsing=True):
         if not parsing:
+            # Unserializing an existing object
             super(Item, self).__init__(params, parsing)
             return
+
+        # Creating a new Alignak object instance
         cls = self.__class__
         self.uuid = uuid.uuid4().hex
 
@@ -241,8 +246,9 @@ class Item(AlignakObject):
         for prop, entry in self.__class__.running_properties.items():
             # Copy is slow, so we check type
             # Type with __iter__ are list or dict, or tuple.
-            # Item need it's own list, so we copy
+            # Item need its own list, so we copy
             val = entry.default
+            # todo: perharps isinstance(val, dict, list, set) ?
             if hasattr(val, '__iter__'):
                 setattr(self, prop, copy(val))
             else:
@@ -355,7 +361,10 @@ class Item(AlignakObject):
     @classmethod
     def load_global_conf(cls, conf):
         """
-        Load configuration of parent object
+        Load configuration of parent object.
+        Some objects inherit some properties from the global configuration if they do not
+        define their own value. E.g. the global 'accept_passive_service_checks' is inherited
+        by the services as 'accept_passive_checks'
 
         :param cls: parent object
         :type cls: object
@@ -366,6 +375,7 @@ class Item(AlignakObject):
         for prop, entry in conf.properties.items():
             # If we have a class_inherit, and the arbiter really send us it
             # if 'class_inherit' in entry and hasattr(conf, prop):
+            # todo: obviously conf has prop because prop is in conf items()!!!
             if hasattr(conf, prop):
                 for (cls_dest, change_name) in entry.class_inherit:
                     if cls_dest == cls:  # ok, we've got something to get
@@ -430,6 +440,29 @@ class Item(AlignakObject):
         del self.plus[prop]
         return val
 
+    def add_error(self, txt):
+        """Add a message in the configuration errors list so we can print them
+         all in one place
+
+         Set the object configuration as not correct
+
+        :param txt: error message
+        :type txt: str
+        :return: None
+        """
+        self.configuration_errors.append(txt)
+        self.conf_is_correct = False
+
+    def add_warning(self, txt):
+        """Add a message in the configuration warnings list so we can print them
+         all in one place
+
+        :param txt: warning message
+        :type txt: str
+        :return: None
+        """
+        self.configuration_warnings.append(txt)
+
     def is_correct(self):
         """
         Check if this object is correct
@@ -441,23 +474,17 @@ class Item(AlignakObject):
         :return: True if it's correct, otherwise False
         :rtype: bool
         """
-        state = True
+        state = self.conf_is_correct
         properties = self.__class__.properties
 
         for prop, entry in properties.items():
             if hasattr(self, 'special_properties') and prop in getattr(self, 'special_properties'):
                 continue
             if not hasattr(self, prop) and entry.required:
-                msg = "[%s::%s] %s property is missing" % (
-                    self.my_type, self.get_name(), prop
-                )
+                msg = "[%s::%s] %s property is missing" % (self.my_type, self.get_name(), prop)
                 self.configuration_errors.append(msg)
-                state = False
 
-        # Raise all previously sawn errors
-        if self.configuration_errors:
-            state = False
-
+        state = state & self.conf_is_correct
         return state
 
     def old_properties_names_to_new(self):

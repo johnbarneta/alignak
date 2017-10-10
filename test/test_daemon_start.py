@@ -195,12 +195,12 @@ class template_Daemon_Start():
                             debug_file='/tmp/debug-daemon.log')
         assert daemon.debug is True
         assert daemon.debug_file == '/tmp/debug-daemon.log'
-        assert daemon.fpid_name == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
         assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
 
         # Start the daemon
         self.start_daemon(daemon)
-        assert os.path.exists(daemon.fpid_name)
+        assert os.path.exists(daemon.pid_filename)
         # This assertion is False on Travis build :(
         # assert os.path.exists(d.debug_file)
 
@@ -208,7 +208,7 @@ class template_Daemon_Start():
 
         # Stop the daemon
         self.stop_daemon(daemon)
-        assert not os.path.exists(daemon.fpid_name)
+        assert not os.path.exists(daemon.pid_filename)
 
     def test_config_and_start_and_stop(self):
         """ Test configuration loaded, daemon started and stopped
@@ -218,15 +218,15 @@ class template_Daemon_Start():
         # # Start normally
         daemon = self.get_daemon(is_daemon=False, do_replace=False, free_port=False)
         assert daemon.debug_file == None
-        assert daemon.fpid_name == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
-        save_pid_fname = daemon.fpid_name
+        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
+        save_pid_fname = daemon.pid_filename
         assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
 
         # Start the daemon
         self.start_daemon(daemon)
 
         # Check PID
-        assert os.path.exists(daemon.fpid_name)
+        assert os.path.exists(daemon.pid_filename)
         # Check log file
         assert os.path.exists(daemon.local_log)
 
@@ -234,7 +234,7 @@ class template_Daemon_Start():
 
         # Stop the daemon and unlink the pid file
         self.stop_daemon(daemon)
-        assert not os.path.exists(daemon.fpid_name)
+        assert not os.path.exists(daemon.pid_filename)
 
         # Reset initial working dir
         os.chdir(self._launch_dir)
@@ -244,22 +244,22 @@ class template_Daemon_Start():
         daemon = self.get_daemon(is_daemon=False, do_replace=False, free_port=False)
         print("Cwd: %s" % self._launch_dir)
         # Use the same pid file
-        assert daemon.fpid_name == save_pid_fname
+        assert daemon.pid_filename == save_pid_fname
         assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
 
         # Update working dir to use temporary
         daemon.workdir = tempfile.mkdtemp()
-        daemon.fpid_name = os.path.join(daemon.workdir, "daemon.pid")
+        daemon.pid_filename = os.path.join(daemon.workdir, "daemon.pid")
 
         # Start the daemon
         self.start_daemon(daemon)
-        assert os.path.exists(daemon.fpid_name)
+        assert os.path.exists(daemon.pid_filename)
 
         time.sleep(2)
 
         #  Stop the daemon
         self.stop_daemon(daemon)
-        assert not os.path.exists(daemon.fpid_name)
+        assert not os.path.exists(daemon.pid_filename)
 
     def test_config_and_replace_and_stop(self):
         """ Test configuration loaded, daemon started, replaced and stopped
@@ -269,7 +269,7 @@ class template_Daemon_Start():
         # # Start normally
         daemon = self.get_daemon(is_daemon=False, do_replace=False, free_port=False)
         assert daemon.debug_file == None
-        assert daemon.fpid_name == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
         assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
 
         # Setup logger
@@ -278,8 +278,8 @@ class template_Daemon_Start():
         # Start the daemon
         self.start_daemon(daemon)
         # Get PID
-        assert os.path.exists(daemon.fpid_name)
-        fpid = open(daemon.fpid_name, 'r+')
+        assert os.path.exists(daemon.pid_filename)
+        fpid = open(daemon.pid_filename, 'r+')
         pid_var = fpid.readline().strip(' \r\n')
         print("Daemon's pid: %s" % pid_var)
         # Check log file
@@ -299,7 +299,7 @@ class template_Daemon_Start():
         # Stop the daemon, but do not unlink the pid file
         # self.stop_daemon(d)
         daemon.do_stop()
-        assert os.path.exists(daemon.fpid_name)
+        assert os.path.exists(daemon.pid_filename)
 
         # Update log file information
         daemon.local_log = os.path.abspath(os.path.join(daemon.logdir, daemon.name + ".log"))
@@ -314,17 +314,17 @@ class template_Daemon_Start():
 
         # Start as a daemon and replace if still exists
         daemon = self.get_daemon(is_daemon=False, do_replace=True, free_port=False)
-        assert daemon.fpid_name == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
         assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
 
         # Update working dir to use temporary
         daemon.workdir = tempfile.mkdtemp()
-        daemon.fpid_name = os.path.join(daemon.workdir, "daemon.pid")
+        daemon.pid_filename = os.path.join(daemon.workdir, "daemon.pid")
 
         # Start the daemon
         self.start_daemon(daemon)
-        assert os.path.exists(daemon.fpid_name)
-        fpid = open(daemon.fpid_name, 'r+')
+        assert os.path.exists(daemon.pid_filename)
+        fpid = open(daemon.pid_filename, 'r+')
         pid_var = fpid.readline().strip(' \r\n')
         print("Daemon's (new) pid: %s" % pid_var)
 
@@ -332,7 +332,7 @@ class template_Daemon_Start():
 
         #  Stop the daemon
         self.stop_daemon(daemon)
-        assert not os.path.exists(daemon.fpid_name)
+        assert not os.path.exists(daemon.pid_filename)
 
     def test_bad_piddir(self):
         """ Test bad PID directory
@@ -343,7 +343,7 @@ class template_Daemon_Start():
 
         daemon = self.get_daemon()
         daemon.workdir = tempfile.mkdtemp()
-        daemon.fpid_name = os.path.abspath(os.path.join('/DONOTEXISTS', "daemon.pid"))
+        daemon.pid_filename = os.path.abspath(os.path.join('/DONOTEXISTS', "daemon.pid"))
 
         with pytest.raises(InvalidPidFile):
             self.start_daemon(daemon)
@@ -372,7 +372,7 @@ class template_Daemon_Start():
 
         daemon = self.get_daemon()
         print("Daemon: %s" % daemon)
-        assert daemon.fpid_name == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
         assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
 
         # # Update log file information
@@ -424,23 +424,23 @@ class template_Daemon_Start():
         print("Testing port not free ... mypid=%d" % (os.getpid()))
         d1 = self.get_daemon()
 
-        print("PID file: %s" % d1.fpid_name)
+        print("PID file: %s" % d1.pid_filename)
         d1.workdir = tempfile.mkdtemp()
-        d1.fpid_name = os.path.abspath(os.path.join(d1.workdir, "daemon.pid"))
+        d1.pid_filename = os.path.abspath(os.path.join(d1.workdir, "daemon.pid"))
         d1.host = "127.0.0.1"  # Force all interfaces
 
         self.start_daemon(d1)
         time.sleep(1)
-        print("PID file: %s" % d1.fpid_name)
-        assert os.path.exists(d1.fpid_name)
+        print("PID file: %s" % d1.pid_filename)
+        assert os.path.exists(d1.pid_filename)
 
         # so that second daemon will not see first started one:
-        os.unlink(d1.fpid_name)
+        os.unlink(d1.pid_filename)
 
         d2 = self.get_daemon()
 
         d2.workdir = d1.workdir
-        d2.fpid_name = d1.fpid_name
+        d2.pid_filename = d1.pid_filename
         d2.host = "127.0.0.1"  # Force all interfaces
         d2.port = d1.http_daemon.port
 

@@ -103,11 +103,12 @@ class Arbiter(Daemon):  # pylint: disable=R0902
     def __init__(self, **kwargs):
         self.monitoring_config_files = []
 
-        self.daemon_name = 'arbiter-master'
+        # Default vs command line daemon parameter
+        daemon_name = 'arbiter-master'
         if 'daemon_name' in kwargs and kwargs['daemon_name']:
-            self.daemon_name = kwargs['daemon_name']
+            daemon_name = kwargs['daemon_name']
 
-        super(Arbiter, self).__init__(self.daemon_name, **kwargs)
+        super(Arbiter, self).__init__(daemon_name, **kwargs)
 
         # Specific arbiter command line parameters
         if 'monitoring_files' in kwargs and kwargs['monitoring_files']:
@@ -123,8 +124,8 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             # in the environment configuration file
             self.monitoring_config_files = kwargs['monitoring_files']
         if not self.monitoring_config_files:
-            sys.exit("The Alignak environment file is not existing or do not define "
-                     "any monitoring configuration files. "
+            sys.exit("The Alignak environment file is not existing "
+                     "or do not define any monitoring configuration files. "
                      "The arbiter can not start correctly.")
 
         print("Arbiter daemon '%s' has some monitoring configuration files: %s"
@@ -136,7 +137,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         self.analyse = None
         if 'analyse' in kwargs and kwargs['analyse']:
             self.analyse = kwargs.get('analyse', False)
-        self.alignak_name = self.daemon_name
+        self.alignak_name = self.name
         if 'alignak_name' in kwargs and kwargs['alignak_name']:
             self.alignak_name = kwargs['alignak_name']
         self.arbiter_name = self.alignak_name
@@ -267,6 +268,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             # Force the global logger at INFO level
             alignak_logger = logging.getLogger("alignak")
             alignak_logger.setLevel(logging.INFO)
+            logger.info("-----")
             logger.info("Arbiter is in configuration check mode")
             logger.info("-----")
 
@@ -276,7 +278,9 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         raw_objects = self.conf.read_config_buf(buf)
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
-            err = "***> One or more problems was encountered while processing the config files..."
+            logger.info(self.conf.conf_is_correct)
+            err = "*** One or more problems were encountered while processing " \
+                  "the config files (first check)..."
             logger.error(err)
             # Display found warnings and errors
             self.conf.show_errors()
@@ -286,8 +290,30 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         self.alignak_name = getattr(self.conf, "alignak_name", self.arbiter_name)
         logger.info("Configuration for Alignak: %s", self.alignak_name)
 
-        # First we need to get arbiters and modules
-        # so we can ask them for objects
+        # Here we got the monitoring configuration from the Cfg configuration files
+        # We must overload this configuration for the daemons and modules with the configuration
+        # declare in the alignak.ini file!
+
+        if self.alignak_env:
+            # Get all the Alignak dameons from the configuration
+            for daemon_type in ['arbiter', 'broker', 'scheduler',
+                                'poller', 'reactionner', 'receiver']:
+                if raw_objects[daemon_type]:
+                    logger.warning("Erasing daemons '%s' configuration found in cfg files",
+                                   daemon_type)
+                raw_objects[daemon_type] = []
+            for daemon_name, daemon_cfg in self.alignak_env.get_daemons().items():
+                if 'type' not in daemon_cfg:
+                    self.conf.add_error("Ignoring daemon with an unknown type: %s" % daemon_name)
+                    continue
+                raw_objects[daemon_cfg['type']].append(daemon_cfg)
+
+            # and then get all modules from the configuration
+            raw_objects['module'] = []
+            for module_name, module_cfg in self.alignak_env.get_modules().items():
+                raw_objects['module'].append(module_cfg)
+
+        # Create objects for our arbiters and modules
         self.conf.create_objects_for_type(raw_objects, 'arbiter')
         self.conf.create_objects_for_type(raw_objects, 'module')
 
@@ -295,6 +321,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         # Search which arbiter I am in the arbiters list
         for arbiter in self.conf.arbiters:
+            logger.info("I have arbiter in my configuration: %s", arbiter.get_name())
             if arbiter.get_name() in ['Default-Arbiter', self.arbiter_name]:
                 logger.info("I found myself in the configuration: %s", arbiter.get_name())
                 # Arbiter is master one
@@ -349,16 +376,19 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # (example modules: alignak_backend)
         self.load_modules_alignak_configuration()
 
-        # Call modules get_objects() to load new objects from them
+        # Call modules get_objects() to load new objects from arbiter modules
         # (example modules: alignak_backend)
         self.load_modules_configuration_objects(raw_objects)
 
-        # Resume standard operations
+        # Resume standard operations and create objects for all the configuration
+        for daemon_type in ['scheduler', 'broker', 'poller', 'reactionner', 'receiver']:
+            self.conf.create_objects_for_type(raw_objects, daemon_type)
         self.conf.create_objects(raw_objects)
 
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
-            err = "***> One or more problems was encountered while processing the config files..."
+            err = "*** One or more problems were encountered while processing " \
+                  "the config files (second check)..."
             logger.error(err)
             # Display found warnings and errors
             self.conf.show_errors()

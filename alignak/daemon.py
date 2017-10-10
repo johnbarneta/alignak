@@ -184,6 +184,12 @@ class Daemon(object):
             StringProp(default='unknown'),
         'name':
             StringProp(),
+        'env_filename':
+            StringProp(default=''),
+        'log_filename':
+            StringProp(default=''),
+        'pid_filename':
+            StringProp(default=''),
         'etcdir':
             PathProp(default=DEFAULT_WORK_DIR),
         'workdir':
@@ -210,8 +216,12 @@ class Daemon(object):
             StringProp(default=''),
         'server_cert':
             StringProp(default='etc/certs/server.cert'),
+        'pidfile':
+            StringProp(default=''),
         'use_local_log':
             BoolProp(default=True),
+        'local_log':
+            StringProp(default=''),
         'human_timestamp_log':
             BoolProp(default=True),
         'human_date_format':
@@ -257,6 +267,7 @@ class Daemon(object):
         :param name: the unique daemon name
         :param kwargs: list of key/value pairs from the daemon command line
         """
+        self.alignak_env = None
         self.monitoring_config_files = None
         self.modules_manager = None
 
@@ -291,55 +302,52 @@ class Daemon(object):
                              % (self.name, os.getcwd())))
 
         # I probably got an Alignak environment file
-        self.env_file = None
         if 'env_file' in kwargs:
-            self.env_file = kwargs['env_file']
+            self.env_filename = kwargs['env_file']
             print("Daemon '%s' is started with an environment file: %s"
-                  % (self.name, self.env_file))
+                  % (self.name, self.env_filename))
             self.pre_log.append(("DEBUG",
                                  "Daemon '%s' is started with an environment file: %s"
-                                 % (self.name, self.env_file)))
+                                 % (self.name, self.env_filename)))
 
             # Read Alignak environment file
-            args = {'<cfg_file>': self.env_file, '--verbose': self.debug}
-            configuration_dir = os.path.dirname(self.env_file)
+            args = {'<cfg_file>': self.env_filename, '--verbose': self.debug}
+            configuration_dir = os.path.dirname(self.env_filename)
             try:
-                parsed_configuration = AlignakConfigParser(args)
-                parsed_configuration.parse()
-                # Update my properties with those of the configuration file
-                for prop, value in parsed_configuration.__dict__.iteritems():
-                    # Global Alignak configuration
-                    if prop.startswith('alignak-configuration.'):
-                        prop = prop.replace('alignak-configuration.', '')
-                        if not prop.startswith('cfg') or not value:
-                            continue
-                        self.pre_log.append(("DEBUG",
-                                             " found Alignak monitoring "
-                                             "configuration parameter, %s = %s" % (prop, value)))
-                        if not os.path.isabs(value):
-                            value = os.path.abspath(os.path.join(configuration_dir, value))
-                        self.monitoring_config_files.append(value)
+                self.alignak_env = AlignakConfigParser(args)
+                self.alignak_env.parse()
+
+                for prop, value in self.alignak_env.get_monitored_configuration().items():
+                    self.pre_log.append(("DEBUG",
+                                         " found Alignak monitoring "
+                                         "configuration parameter, %s = %s" % (prop, value)))
+                    # Ignore empty value
+                    if not value:
                         continue
 
-                    # Daemon's configuration
-                    if prop.startswith('daemon.' + self.name + '.'):
-                        prop = prop.replace('daemon.' + self.name + '.', '')
-                        self.pre_log.append(("DEBUG",
-                                             " found daemon parameter, %s = %s" % (prop, value)))
-                        if getattr(self, prop, None) is None:
-                            # For an undeclared property, store the value as a string
-                            setattr(self, prop, value)
-                            self.pre_log.append(("DEBUG", " -> setting %s = %s" % (prop, value)))
-                        elif callable(getattr(self, prop)):
-                            # For a declared property, that match a self function name
-                            raise ValueError("Property %s cannot be defined "
-                                             "as a daemon property!" % prop)
-                        else:
-                            # For a declared property, cast the read value
-                            current_prop = getattr(self, prop)
-                            setattr(self, prop, cls.properties[prop].pythonize(value))
-                            self.pre_log.append(("DEBUG", " -> updating %s = %s to %s"
-                                                 % (prop, current_prop, getattr(self, prop))))
+                    # Make the path absolute
+                    if not os.path.isabs(value):
+                        value = os.path.abspath(os.path.join(configuration_dir, value))
+                    self.monitoring_config_files.append(value)
+
+                for prop, value in self.alignak_env.get_daemons(name=self.name).items():
+                    self.pre_log.append(("DEBUG",
+                                         " found daemon parameter, %s = %s" % (prop, value)))
+                    if getattr(self, prop, None) is None:
+                        # For an undeclared property, store the value as a string
+                        setattr(self, prop, value)
+                        self.pre_log.append(("DEBUG", " -> setting %s = %s" % (prop, value)))
+                    elif callable(getattr(self, prop)):
+                        # For a declared property, that match a self function name
+                        raise ValueError("Property %s cannot be defined "
+                                         "as a daemon property!" % prop)
+                    else:
+                        # For a declared property, cast the read value
+                        current_prop = getattr(self, prop)
+                        setattr(self, prop, cls.properties[prop].pythonize(value))
+                        self.pre_log.append(("DEBUG", " -> updating %s = %s to %s"
+                                             % (prop, current_prop, getattr(self, prop))))
+
             except ValueError as exp:
                 print("Daemon '%s' did not correctly read Alignak environment file: %s"
                       % (self.name, args['<cfg_file>']))
@@ -390,10 +398,12 @@ class Daemon(object):
                 print("Daemon '%s' %s path: %s" % (self.name, prop, getattr(self, prop)))
 
         # Default log file is stored in the log directory
-        self.local_log = os.path.join(self.logdir, self.name + ".log")
+        if not getattr(self, 'local_log', None):
+            self.local_log = os.path.join(self.workdir, self.name + ".log")
+
         if 'local_log' in kwargs and kwargs['local_log']:
             self.local_log = kwargs['local_log']
-        self.local_log = os.path.abspath(self.local_log)
+        self.log_filename = os.path.abspath(self.local_log)
         dirname = os.path.dirname(self.local_log)
         try:
             os.makedirs(dirname)
@@ -408,14 +418,15 @@ class Daemon(object):
             print("Daemon '%s' is started with an overidden log file: %s"
                   % (self.name, self.local_log))
         else:
-            print("Daemon '%s' log file: %s" % (self.name, self.local_log))
+            print("Daemon '%s' log file: %s" % (self.name, self.log_filename))
 
         # pid file is stored in the working directory
-        self.pidfile = os.path.join(self.workdir, self.name + ".pid")
+        if not getattr(self, 'pidfile', None):
+            self.pidfile = os.path.join(self.workdir, self.name + ".pid")
         if 'pidfile' in kwargs and kwargs['pidfile']:
             self.pidfile = kwargs['pidfile']
-        self.fpid_name = os.path.abspath(self.pidfile)
-        dirname = os.path.dirname(self.fpid_name)
+        self.pid_filename = os.path.abspath(self.pidfile)
+        dirname = os.path.dirname(self.pid_filename)
         try:
             os.makedirs(dirname)
             print("Daemon '%s' run directory did not exist, I created: %s"
@@ -427,9 +438,9 @@ class Daemon(object):
                 raise
         if 'pidfile' in kwargs and kwargs['pidfile']:
             print("Daemon '%s' is started with an overidden pid file: %s"
-                  % (self.name, self.fpid_name))
+                  % (self.name, self.pid_filename))
         else:
-            print("Daemon '%s' pid file: %s" % (self.name, self.fpid_name))
+            print("Daemon '%s' pid file: %s" % (self.name, self.pid_filename))
 
         # Track time
         now = time.time()
@@ -710,9 +721,9 @@ class Daemon(object):
 
         :return: None
         """
-        logger.debug("Unlinking %s", self.fpid_name)
+        logger.debug("Unlinking %s", self.pid_filename)
         try:
-            os.unlink(self.fpid_name)
+            os.unlink(self.pid_filename)
         except OSError as exp:
             logger.error("Got an error unlinking our pid file: %s", exp)
 
@@ -743,15 +754,15 @@ class Daemon(object):
         try:
             self.pre_log.append(("DEBUG",
                                  "Opening %s pid file: %s" % ('existing' if
-                                                              os.path.exists(self.fpid_name)
-                                                              else 'missing', self.fpid_name)))
+                                                              os.path.exists(self.pid_filename)
+                                                              else 'missing', self.pid_filename)))
             # Windows do not manage the rw+ mode,
             # so we must open in read mode first, then reopen it write mode...
-            if not write and os.path.exists(self.fpid_name):
-                self.fpid = open(self.fpid_name, 'r+')
+            if not write and os.path.exists(self.pid_filename):
+                self.fpid = open(self.pid_filename, 'r+')
             else:
                 # If it doesn't exist too, we create it as void
-                self.fpid = open(self.fpid_name, 'w+')
+                self.fpid = open(self.pid_filename, 'w+')
         except Exception as err:
             print("Exception: %s" % err)
             raise InvalidPidFile(err)
@@ -775,12 +786,12 @@ class Daemon(object):
             pid_var = self.fpid.readline().strip(' \r\n')
             if pid_var:
                 pid = int(pid_var)
-                logger.info("Found an existing pid (%s): '%s'", self.fpid_name, pid_var)
+                logger.info("Found an existing pid (%s): '%s'", self.pid_filename, pid_var)
             else:
-                logger.debug("Not found an existing pid: %s", self.fpid_name)
+                logger.debug("Not found an existing pid: %s", self.pid_filename)
                 return
         except (IOError, ValueError) as err:
-            logger.warning("pidfile is empty or has an invalid content: %s", self.fpid_name)
+            logger.warning("pidfile is empty or has an invalid content: %s", self.pid_filename)
             return
 
         if pid == os.getpid():
@@ -1218,7 +1229,7 @@ class Daemon(object):
                   "Copyright (c) 2015-2017: Alignak Team",
                   "License: AGPL",
                   "-----",
-                  "My pid: %s", os.getpid(),
+                  "My pid: %s" % os.getpid(),
                   "My configuration: "]
 
         for prop, _ in sorted(self.properties.items()):
@@ -1535,7 +1546,7 @@ class Daemon(object):
             try:
                 # pylint: disable=E1101
                 setup_logger(None, level=log_level, human_log=human_log_format,
-                             log_console=True, log_file=self.local_log,
+                             log_console=True, log_file=self.log_filename,
                              when=self.log_rotation_when, interval=self.log_rotation_interval,
                              backup_count=self.log_rotation_count,
                              human_date_format=self.human_date_format)

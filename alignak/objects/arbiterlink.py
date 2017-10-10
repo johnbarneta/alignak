@@ -64,7 +64,7 @@ class ArbiterLink(SatelliteLink):
     my_type = 'arbiter'
     properties = SatelliteLink.properties.copy()
     properties.update({
-        'arbiter_name':    StringProp(),
+        # 'arbiter_name':    StringProp(),
         'host_name':       StringProp(default=socket.gethostname()),
         'port':            IntegerProp(default=7770),
     })
@@ -190,7 +190,7 @@ class ArbiterLinks(SatelliteLinks):
     Class to manage list of ArbiterLink.
     ArbiterLinks is used to regroup all links with Arbiter daemon
     """
-    name_property = "arbiter_name"
+    name_property = "name"
     inner_class = ArbiterLink
 
     def linkify(self, realms=None, modules=None):
