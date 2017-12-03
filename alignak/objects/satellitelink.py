@@ -45,6 +45,7 @@ This module provides an abstraction layer for communications between Alignak dae
 Used by the Arbiter
 """
 import logging
+import warnings
 
 from alignak.util import get_obj_name_two_args_and_void
 from alignak.misc.serialization import unserialize, AlignakClassLookupException
@@ -93,6 +94,8 @@ class SatelliteLink(Item):
         'realm':
             StringProp(default='', fill_brok=['full_status'],
                        brok_transformation=get_obj_name_two_args_and_void),
+        'realm_name':
+            StringProp(default=''),
         'satellitemap':
             DictProp(default={}, elts_prop=AddrProp, to_send=True, override=True),
         'use_ssl':
@@ -153,10 +156,6 @@ class SatelliteLink(Item):
         'broks':
             StringProp(default=[]),
 
-        # todo: necessary?
-        'realm_name':
-            StringProp(default=''),
-
         # the number of poll attempt from the arbiter dispatcher
         'attempt':
             IntegerProp(default=0, fill_brok=['full_status']),
@@ -183,13 +182,14 @@ class SatelliteLink(Item):
     })
 
     def __init__(self, *args, **kwargs):
-        # Define the name property of the satellite from its type
-        if 'name' in kwargs and kwargs['name']:
-            setattr(self, self.get_my_type() + '_name', kwargs['name'])
-
         super(SatelliteLink, self).__init__(*args, **kwargs)
 
         self.fill_default()
+
+        # Define the name property of the satellite from its type
+        # Hack for ascending compatibility
+        if not getattr(self, self.type + '_name', None):
+            setattr(self, self.type + '_name', self.name)
 
         self.arb_satmap = {
             'address': getattr(self, 'address', None),
@@ -200,18 +200,10 @@ class SatelliteLink(Item):
         if not self.con:
             self.create_connection()
 
-    def get_name(self):
-        """Get the name of the link based on its type
-        if *mytype*_name is an attribute then returns self.*mytype*_name.
-        otherwise returns "Unnamed *mytype*"
-        Example : self.poller_name or "Unnamed poller"
-
-        :return: String corresponding to the link name
-        :rtype: str
-        """
-        return self.name
-        # return getattr(self, "{0}_name".format(self.get_my_type()),
-        #                "Unnamed {0}".format(self.get_my_type()))
+    def __repr__(self):
+        return '<%s %s/%s, contact: %s />' % \
+               (self.__class__.__name__, self.type, self.name, self.address)
+    __str__ = __repr__
 
     def set_arbiter_satellitemap(self, satellitemap):
         """
@@ -721,15 +713,6 @@ class SatelliteLink(Item):
         for prop in params:
             self.cfg['global'][prop] = params[prop]
 
-    def get_my_type(self):
-        """Get the satellite type. Accessor to __class__.mytype
-        ie : poller, scheduler, receiver, broker, arbiter or reactionner
-
-        :return: Satellite type
-        :rtype: str
-        """
-        return self.__class__.my_type
-
     def give_satellite_cfg(self):
         """Get a configuration for this satellite.
         Not used by Scheduler and Arbiter (overridden)
@@ -737,8 +720,8 @@ class SatelliteLink(Item):
         :return: Configuration for satellite
         :rtype: dict
         """
-        return {'port': self.port, 'address': self.address,
-                'name': self.get_name(), 'instance_id': self.uuid,
+        return {'name': self.name, 'port': self.port, 'address': self.address,
+                'instance_id': self.uuid,
                 'use_ssl': self.use_ssl, 'hard_ssl_name_check': self.hard_ssl_name_check,
                 'timeout': self.timeout, 'data_timeout': self.data_timeout,
                 'max_check_attempts': self.max_check_attempts,
@@ -753,6 +736,11 @@ class SatelliteLinks(Items):
 
     name_property = "name"
     inner_class = SatelliteLink
+
+    def __repr__(self):
+        return '<%s %d elements: %s/>' % \
+               (self.__class__.__name__, len(self), ', '.join([s.name for s in self]))
+    __str__ = __repr__
 
     def linkify(self, realms, modules):
         """Link realms and modules in all SatelliteLink
@@ -793,4 +781,4 @@ class SatelliteLinks(Items):
             else:
                 err = "The %s %s got a unknown realm '%s'" % \
                       (satlink.__class__.my_type, satlink.get_name(), r_name)
-                satlink.configuration_errors.append(err)
+                satlink.add_error(err)

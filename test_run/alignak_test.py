@@ -189,7 +189,7 @@ class AlignakTest(unittest.TestCase):
         #          tmp_folder + '/arbiter/daemons/reactionner-master.cfg',
         #          tmp_folder + '/arbiter/daemons/receiver-master.cfg',
         #          tmp_folder + '/arbiter/daemons/scheduler-master.cfg']
-        # files = [tmp_folder + '/alignak.ini']
+        # files = [tmp_folder + '/alignak-realm2.ini']
         # replacements = {
         #     '/usr/local/var/run/alignak': '/tmp',
         #     '/usr/local/var/log/alignak': '/tmp',
@@ -249,7 +249,7 @@ class AlignakTest(unittest.TestCase):
         for daemon in ['scheduler', 'broker', 'poller', 'reactionner', 'receiver']:
             self.procs[daemon] = \
                 subprocess.Popen(["../alignak/bin/alignak_%s.py" %daemon,
-                                  "-e", tmp_folder + "/alignak.ini"],
+                                  "-e", tmp_folder + "/alignak-realm2.ini"],
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             sleep(0.1)
             print("- %s launched (pid=%d)" % (daemon, self.procs[daemon].pid))
@@ -282,7 +282,7 @@ class AlignakTest(unittest.TestCase):
         print("Launching arbiter...")
         self.procs['arbiter'] = \
             subprocess.Popen(["../alignak/bin/alignak_arbiter.py",
-                              "-e", tmp_folder + "/alignak.ini",
+                              "-e", tmp_folder + "/alignak-realm2.ini",
                               "-a", tmp_folder + "/alignak.cfg"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("%s launched (pid=%d)" % ('arbiter', self.procs['arbiter'].pid))
@@ -381,7 +381,7 @@ class AlignakTest(unittest.TestCase):
 
         # Initialize the Arbiter with no daemon configuration file
         configuration_dir = os.path.dirname(configuration_file)
-        self.env_file = os.path.join(configuration_dir, 'alignak.ini')
+        self.env_file = os.path.join(configuration_dir, 'alignak-realm2.ini')
         args = {
             'env_file': self.env_file,
             'alignak_name': 'arbiter-master', 'daemon_name': None,
@@ -420,8 +420,8 @@ class AlignakTest(unittest.TestCase):
 
         for arb in self.arbiter.conf.arbiters:
             if arb.get_name() == self.arbiter.arbiter_name:
-                self.arbiter.myself = arb
-        self.arbiter.dispatcher = Dispatcher(self.arbiter.conf, self.arbiter.myself)
+                self.arbiter.link_to_myself = arb
+        self.arbiter.dispatcher = Dispatcher(self.arbiter.conf, self.arbiter.link_to_myself)
         self.arbiter.dispatcher.prepare_dispatch()
 
         # Build schedulers dictionary with the schedulers involved in the configuration

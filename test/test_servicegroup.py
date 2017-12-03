@@ -55,10 +55,10 @@ class TestServiceGroup(AlignakTest):
         """
         self.print_header()
         self.setup_with_file('cfg/servicegroup/alignak_groups_with_no_alias.cfg')
-        assert self.schedulers['Default-Scheduler'].conf.conf_is_correct
+        assert self.schedulers['scheduler-master'].conf.conf_is_correct
 
         #  Found a servicegroup named NOALIAS
-        sg = self.schedulers['Default-Scheduler'].sched.servicegroups.find_by_name("NOALIAS")
+        sg = self.schedulers['scheduler-master'].sched.servicegroups.find_by_name("NOALIAS")
         assert isinstance(sg, Servicegroup)
         assert sg.get_name() == "NOALIAS"
         assert sg.alias == "NOALIAS"

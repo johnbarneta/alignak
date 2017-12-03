@@ -33,7 +33,7 @@ alignak-environment command line interface::
         This script will parse the provided configuration file and it will output all the
         variables defined in this file as Linux/Unix shell export variables.
 
-        As an example for a file as the default ./etc/alignak.ini, the script will output:
+        As an example for a file as the default ./etc/alignak-realm2.ini, the script will output:
             export ALIGNAK_VERSION=1.0.0
             export ALIGNAK_CONFIGURATION_DIST_BIN=../alignak/bin
             export ALIGNAK_CONFIGURATION_DIST_ETC=../etc
@@ -230,10 +230,10 @@ alignak-environment command line interface::
             alignak-environment (-h | --help)
 
         Parse Alignak configuration file and define environment variables
-            cfg_file ../etc/alignak.ini
+            cfg_file ../etc/alignak-realm2.ini
 
         Parse Alignak configuration file and define environment variables and print information
-            cfg_file -v ../etc/alignak.ini
+            cfg_file -v ../etc/alignak-realm2.ini
 
         Exit code:
             0 if required operation succeeded
@@ -379,7 +379,7 @@ class AlignakConfigParser(object):
         """
         Get the Alignak monitored configuration parameters
 
-        :return: a dict containing the Alignak configuration parameters
+        :return: a dict containing the Alignak configuration files
         """
         configuration = self._search_sections(SECTION_CONFIGURATION)
         if SECTION_CONFIGURATION not in configuration:
@@ -388,6 +388,15 @@ class AlignakConfigParser(object):
             if not prop.startswith('cfg'):
                 configuration[SECTION_CONFIGURATION].pop(prop)
         return configuration[SECTION_CONFIGURATION]
+
+    def get_alignak_configuration(self):
+        """
+        Get the Alignak global parameters. Indeed all the parameters defined in the DEFAULT
+        ini file section...
+
+        :return: a dict containing the Alignak parameters
+        """
+        return self.config.defaults()
 
     def get_daemons(self, name=None, type=None):
         """

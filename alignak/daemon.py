@@ -73,6 +73,7 @@ import ConfigParser
 import threading
 import logging
 import warnings
+import traceback
 from Queue import Empty, Full
 from multiprocessing.managers import SyncManager
 
@@ -262,11 +263,16 @@ class Daemon(object):
 
     def __init__(self, name, **kwargs):
         # pylint: disable=too-many-branches, too-many-statements, no-member
-        """
+        """Daemon initialization
 
-        :param name: the unique daemon name
-        :param kwargs: list of key/value pairs from the daemon command line
+        The daemon name exist in kwargs ['daemon_name'] which is the one
+        provided on the command line. It is set by the 'ame' parameter which must be provided
+        by the sub class.
+
+        :param kwargs: list of key/value pairs from the daemon command line and configuration
         """
+        print("name: %s, kwargs: %s" % (name, kwargs))
+
         self.alignak_env = None
         self.monitoring_config_files = None
         self.modules_manager = None
@@ -277,6 +283,9 @@ class Daemon(object):
             self.debug = kwargs['debug']
         # Used to track debug, info warnings that will be logged once the logger is effective
         self.pre_log = []
+
+        # I got my name
+        self.name = name
 
         # Check if /dev/shm exists and usable...
         self.check_shm()
@@ -294,8 +303,21 @@ class Daemon(object):
                     else:
                         setattr(self, prop, entry.pythonize(entry.default))
 
-        # I got my name
-        self.name = name
+        print("name: %s, self: %s" % (name, self))
+
+        # Self daemon monitoring (cpu, memory)
+        self.daemon_monitoring = False
+        self.daemon_monitoring_period = 10
+        if 'ALIGNAK_DAEMONS_MONITORING' in os.environ:
+            self.daemon_monitoring = True
+            if os.environ['ALIGNAK_DAEMONS_MONITORING']:
+                try:
+                    self.daemon_monitoring_period = int(os.environ['ALIGNAK_DAEMONS_MONITORING'])
+                except ValueError:
+                    pass
+        if self.daemon_monitoring:
+            logger.info("Daemon '%s' self monitoring is enabled, reporting every %d loop count.",
+                        self.name, self.daemon_monitoring_period)
 
         self.pre_log.append(("DEBUG",
                              "Daemon '%s' initial working directory: %s"
@@ -351,7 +373,7 @@ class Daemon(object):
             except ValueError as exp:
                 print("Daemon '%s' did not correctly read Alignak environment file: %s"
                       % (self.name, args['<cfg_file>']))
-                print("Exception: %s" % (exp))
+                print("Exception: %s\n%s" % (exp, traceback.format_exc()))
 
         # And perhaps some other parameters from the initial command line
         self.config_file = None
@@ -399,7 +421,7 @@ class Daemon(object):
 
         # Default log file is stored in the log directory
         if not getattr(self, 'local_log', None):
-            self.local_log = os.path.join(self.workdir, self.name + ".log")
+            self.local_log = os.path.join(self.logdir, self.name + ".log")
 
         if 'local_log' in kwargs and kwargs['local_log']:
             self.local_log = kwargs['local_log']
@@ -421,6 +443,7 @@ class Daemon(object):
             print("Daemon '%s' log file: %s" % (self.name, self.log_filename))
 
         # pid file is stored in the working directory
+        self.pid = 0
         if not getattr(self, 'pidfile', None):
             self.pidfile = os.path.join(self.workdir, self.name + ".pid")
         if 'pidfile' in kwargs and kwargs['pidfile']:
@@ -486,6 +509,23 @@ class Daemon(object):
 
         os.umask(UMASK)
         self.set_signal_handler()
+
+    def __repr__(self):
+        return '<Daemon %r/%r, listening on %s:%s:%d />' % \
+               (self.type, self.name, self.scheme, self.host, self.port)
+    __str__ = __repr__
+
+    @property
+    def scheme(self):
+        """Daemon interface scheme
+
+        :return: http or https if the daemon uses SSL
+        :rtype: str
+        """
+        _scheme = 'http'
+        if self.use_ssl:
+            _scheme = 'https'
+        return _scheme
 
     # At least, lose the local log file if needed
     def do_stop(self):
@@ -795,6 +835,7 @@ class Daemon(object):
             return
 
         if pid == os.getpid():
+            self.pid = pid
             return
 
         try:
@@ -835,10 +876,10 @@ class Daemon(object):
         :return: None
         """
         if pid is None:
-            pid = os.getpid()
+            self.pid = os.getpid()
         self.fpid.seek(0)
         self.fpid.truncate()
-        self.fpid.write("%d" % (pid))
+        self.fpid.write("%d" % (self.pid))
         self.fpid.close()
         del self.fpid  # no longer needed
 
@@ -1229,7 +1270,7 @@ class Daemon(object):
                   "Copyright (c) 2015-2017: Alignak Team",
                   "License: AGPL",
                   "-----",
-                  "My pid: %s" % os.getpid(),
+                  "My pid: %s" % self.pid,
                   "My configuration: "]
 
         for prop, _ in sorted(self.properties.items()):
@@ -1398,8 +1439,8 @@ class Daemon(object):
         :type hook_name: str
         :return: None
         """
-        _ts = time.time()
         for module in self.modules_manager.instances:
+            _ts = time.time()
             full_hook_name = 'hook_' + hook_name
             if hasattr(module, full_hook_name):
                 fun = getattr(module, full_hook_name)
@@ -1410,7 +1451,8 @@ class Daemon(object):
                                    'and set it to restart later', module.name, str(exp))
                     logger.exception('Exception %s', exp)
                     self.modules_manager.set_to_restart(module)
-        statsmgr.timer('core.hook.%s' % hook_name, time.time() - _ts)
+                else:
+                    statsmgr.timer('core.hook.%s.%s' % (module.name, hook_name), time.time() - _ts)
 
     def get_retention_data(self):  # pylint: disable=R0201
         """Basic function to get retention data,
@@ -1421,7 +1463,6 @@ class Daemon(object):
         """
         return []
 
-    # Save, to get back all data
     def restore_retention_data(self, data):
         """Basic function to save retention data,
         Maybe be overridden by subclasses to implement real save

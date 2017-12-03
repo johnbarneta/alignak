@@ -60,7 +60,7 @@ class TestCommand(AlignakTest):
     """
 
     def setUp(self):
-        self.setup_with_file('cfg/cfg_commands.cfg')
+        self.setup_with_file('cfg/cfg_commands.cfg', verbose=False)
         assert self.conf_is_correct
 
         # Our scheduler

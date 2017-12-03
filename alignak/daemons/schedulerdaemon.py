@@ -86,11 +86,11 @@ class Alignak(BaseSatellite):
     })
 
     def __init__(self, **kwargs):
-        self.daemon_name = 'scheduler-master'
-        if 'daemon_name' in kwargs and kwargs['daemon_name']:
-            self.daemon_name = kwargs['daemon_name']
+        """Scheduler daemon initialisation
 
-        BaseSatellite.__init__(self, self.daemon_name, **kwargs)
+        :param kwargs: command line arguments
+        """
+        super(BaseSatellite, self).__init__(kwargs.get('daemon_name', 'Default-scheduler'), **kwargs)
 
         self.http_interface = SchedulerInterface(self)
         self.sched = Scheduler(self)
@@ -308,6 +308,7 @@ class Alignak(BaseSatellite):
                     # Must look if we already have it
                     sats = getattr(self, sat_type)
                     sat = satellites[sat_type][sat_id]
+                    print("Got a satellite: %s" % sat)
 
                     sats[sat_id] = sat
 
@@ -329,8 +330,10 @@ class Alignak(BaseSatellite):
                     setattr(self, sat_type, sats)
                 logger.debug("We have our %s: %s ", sat_type, satellites[sat_type])
                 logger.info("We have our %s:", sat_type)
+                print("Satellites: %s" % sat_type)
                 for daemon in satellites[sat_type].values():
                     logger.info(" - %s ", daemon['name'])
+                    print("- : %s" % daemon)
 
             # First mix conf and override_conf to have our definitive conf
             for prop in self.override_conf:

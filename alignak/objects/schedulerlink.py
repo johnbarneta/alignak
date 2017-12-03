@@ -146,8 +146,8 @@ class SchedulerLink(SatelliteLink):
         :return: dictionary of scheduler information
         :rtype: dict
         """
-        return {'port': self.port, 'address': self.address,
-                'name': self.get_name(), 'instance_id': self.uuid,
+        return {'name': self.name, 'port': self.port, 'address': self.address,
+                'instance_id': self.uuid,
                 'active': self.conf is not None, 'push_flavor': self.push_flavor,
                 'timeout': self.timeout, 'data_timeout': self.data_timeout,
                 'max_check_attempts': self.max_check_attempts,

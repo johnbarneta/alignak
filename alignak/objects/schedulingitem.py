@@ -550,7 +550,7 @@ class SchedulingItem(Item):  # pylint: disable=R0902
                 setattr(trigger, 'trigger_broker_raise_enabled', self.trigger_broker_raise_enabled)
                 new_triggers.append(trigger.uuid)
             else:
-                self.configuration_errors.append('the %s %s has an unknown trigger_name '
+                self.add_error('the %s %s has an unknown trigger_name '
                                                  '"%s"' % (self.__class__.my_type,
                                                            self.get_full_name(),
                                                            tname))
@@ -3150,29 +3150,29 @@ class SchedulingItem(Item):  # pylint: disable=R0902
         if getattr(self, 'event_handler', None) and not self.event_handler.is_valid():
             msg = "[%s::%s] event_handler '%s' is invalid" \
                   % (self.my_type, self.get_name(), self.event_handler.command)
-            self.configuration_errors.append(msg)
+            self.add_error(msg)
             state = False
 
         if not hasattr(self, 'check_command'):
             msg = "[%s::%s] no check_command" % (self.my_type, self.get_name())
-            self.configuration_errors.append(msg)
+            self.add_error(msg)
             state = False
         # Ok got a command, but maybe it's invalid
         else:
             if not self.check_command.is_valid():
                 msg = "[%s::%s] check_command '%s' invalid" % (self.my_type, self.get_name(),
                                                                self.check_command.command)
-                self.configuration_errors.append(msg)
+                self.add_error(msg)
                 state = False
             if self.got_business_rule:
                 if not self.business_rule.is_valid():
                     msg = "[%s::%s] business_rule invalid" % (
                         self.my_type, self.get_name()
                     )
-                    self.configuration_errors.append(msg)
+                    self.add_error(msg)
                     for bperror in self.business_rule.configuration_errors:
                         msg = "[%s::%s]: %s" % (self.my_type, self.get_name(), bperror)
-                        self.configuration_errors.append(msg)
+                        self.add_error(msg)
                     state = False
 
         if not hasattr(self, 'notification_interval') \
@@ -3180,7 +3180,7 @@ class SchedulingItem(Item):  # pylint: disable=R0902
             msg = "[%s::%s] no notification_interval but notifications enabled" % (
                 self.my_type, self.get_name()
             )
-            self.configuration_errors.append(msg)
+            self.add_error(msg)
             state = False
 
         # if no check_period, means 24x7, like for services
@@ -3244,7 +3244,7 @@ class SchedulingItems(CommandCallItems):
             son = self[son_id]
         else:
             msg = "Dependency son (%s) unknown, configuration error" % son_id
-            self.configuration_errors.append(msg)
+            self.add_error(msg)
         parent = self[parent_id]
         son.act_depend_of.append((parent_id, notif_failure_criteria, dep_period, inherits_parents))
         parent.act_depend_of_me.append((son_id, notif_failure_criteria, dep_period,

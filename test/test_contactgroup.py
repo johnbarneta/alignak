@@ -52,10 +52,10 @@ class TestContactGroup(AlignakTest):
         """
         self.print_header()
         self.setup_with_file('cfg/contactgroup/alignak_groups_with_no_alias.cfg')
-        assert self.schedulers['Default-Scheduler'].conf.conf_is_correct
+        assert self.schedulers['scheduler-master'].conf.conf_is_correct
 
         #  Find a contactgroup named NOALIAS
-        cg = self.schedulers['Default-Scheduler'].sched.contactgroups.find_by_name("NOALIAS")
+        cg = self.schedulers['scheduler-master'].sched.contactgroups.find_by_name("NOALIAS")
         assert isinstance(cg, Contactgroup)
         assert cg.get_name() == "NOALIAS"
         assert cg.alias == "NOALIAS"

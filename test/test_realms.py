@@ -113,7 +113,7 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/realms/two_default_realms.cfg')
+        self.setup_with_file('cfg/realms/no_default_realm.cfg', 'cfg/realms/no_default_realm.ini')
         assert self.conf_is_correct
         self.show_logs()
 
@@ -161,7 +161,7 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/realms/no_defined_daemons.cfg')
+        self.setup_with_file('cfg/realms/no_defined_daemons.cfg', 'cfg/realms/no_defined_daemons.ini')
         assert self.conf_is_correct
         self.show_logs()
 
@@ -266,13 +266,13 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/realms/no_broker_in_realm.cfg')
+        self.setup_with_file('cfg/realms/no_broker_in_realm.cfg', 'cfg/realms/no_broker_in_realm.ini')
         self.show_logs()
         assert self.conf_is_correct
 
         dist = self.arbiter.conf.realms.find_by_name("Distant")
         assert dist is not None
-        sched = self.arbiter.conf.schedulers.find_by_name("Scheduler-distant")
+        sched = self.arbiter.conf.schedulers.find_by_name("scheduler-distant")
         assert sched is not None
         assert 0 == len(self.arbiter.conf.realms[sched.realm].potential_brokers)
         assert 0 == len(self.arbiter.conf.realms[sched.realm].potential_pollers)
@@ -286,14 +286,14 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_realms.cfg')
+        self.setup_with_file('cfg/realms/several_realms.cfg', 'cfg/realms/several_realms.ini', verbose=False)
         self.show_configuration_logs()
         assert self.conf_is_correct
 
         for scheduler in self.schedulers:
-            if scheduler == 'Scheduler-1':
+            if scheduler == 'scheduler-1':
                 sched_realm1 = self.schedulers[scheduler]
-            elif scheduler == 'Scheduler-2':
+            elif scheduler == 'scheduler-2':
                 sched_realm2 = self.schedulers[scheduler]
         realm1 = self.arbiter.conf.realms.find_by_name('realm1')
         assert realm1 is not None
@@ -338,7 +338,7 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_realms.cfg')
+        self.setup_with_file('cfg/realms/several_realms.cfg', 'cfg/realms/several_realms.ini')
         assert self.conf_is_correct
 
         # No error messages
@@ -356,30 +356,34 @@ class TestRealms(AlignakTest):
         assert len(self.arbiter.conf.brokers) == 2
         assert len(self.arbiter.conf.pollers) == 2
         assert len(self.arbiter.conf.reactionners) == 1
-        assert len(self.arbiter.conf.receivers) == 0
+        assert len(self.arbiter.conf.receivers) == 1
 
         for daemon in self.arbiter.conf.schedulers:
-            assert daemon.get_name() in ['Scheduler-1', 'Scheduler-2']
+            assert daemon.get_name() in ['scheduler-1', 'scheduler-2']
             assert daemon.realm in self.arbiter.conf.realms
 
         for daemon in self.arbiter.conf.brokers:
-            assert daemon.get_name() in ['Broker-1', 'Broker-2']
+            assert daemon.get_name() in ['broker-1', 'broker-2']
             assert daemon.realm in self.arbiter.conf.realms
 
         for daemon in self.arbiter.conf.pollers:
-            assert daemon.get_name() in ['Poller-1', 'Poller-2']
+            assert daemon.get_name() in ['poller-1', 'poller-2']
             assert daemon.realm in self.arbiter.conf.realms
 
-        in_realm2 = self.schedulers['Scheduler-1'].sched.hostgroups.find_by_name('in_realm2')
+        for daemon in self.arbiter.conf.receivers:
+            assert daemon.get_name() in ['receiver-master']
+            assert daemon.realm in self.arbiter.conf.realms
+
+        in_realm2 = self.schedulers['scheduler-1'].sched.hostgroups.find_by_name('in_realm2')
         realm1 = self.arbiter.conf.realms.find_by_name('realm1')
         assert realm1 is not None
         realm2 = self.arbiter.conf.realms.find_by_name('realm2')
         assert realm2 is not None
 
         for scheduler in self.schedulers:
-            if scheduler == 'Scheduler-1':
+            if scheduler == 'scheduler-1':
                 sched_realm1 = self.schedulers[scheduler]
-            elif scheduler == 'Scheduler-2':
+            elif scheduler == 'scheduler-2':
                 sched_realm2 = self.schedulers[scheduler]
 
         # 1 and 2 are link to realm2 because they are in the hostgroup in_realm2
@@ -411,7 +415,7 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_realms_sub.cfg')
+        self.setup_with_file('cfg/realms/sub_realms.cfg', 'cfg/realms/sub_realms.ini', verbose=False)
         self.show_logs()
         assert self.conf_is_correct
 
@@ -447,7 +451,7 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_realms_sub.cfg')
+        self.setup_with_file('cfg/sub_realms.cfg')
         assert self.conf_is_correct
 
         world = self.arbiter.conf.realms.find_by_name('World')

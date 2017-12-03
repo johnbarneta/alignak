@@ -75,7 +75,7 @@ class AlignakObject(object):
 
     def fill_default(self):
         """
-        Define properties with default value when not defined
+        Define the object properties with a default value when the property is not yet defined
 
         :return: None
         """

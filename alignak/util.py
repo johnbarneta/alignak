@@ -1311,7 +1311,7 @@ def parse_daemon_args(arbiter=False):
                             help='Set the name of the arbiter to pick in the configuration files '
                                  'For a spare arbiter, this parameter must contain its name!')
 
-    parser.add_argument('-n', '--name', dest='daemon_name',
+    parser.add_argument('-n', '--name', dest='daemon_name', default="Unnamed",
                         help='Daemon unique name. Must be unique for the same daemon type.')
     parser.add_argument('-c', '--config', dest='config_file',
                         help='Daemon configuration file')
@@ -1326,7 +1326,7 @@ def parse_daemon_args(arbiter=False):
     parser.add_argument('-l', '--local_log', dest='local_log',
                         help='File to use for daemon log')
     parser.add_argument('-e', '--environment', dest='env_file', required=True,
-                        default='../../etc/alignak.ini',
+                        default='../../etc/alignak-realm2.ini',
                         help='Alignak global environment file. This file defines all the daemons '
                              'of this Alignak instance and their configuration')
 

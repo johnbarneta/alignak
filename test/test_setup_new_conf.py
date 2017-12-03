@@ -44,11 +44,10 @@ class TestSetupNewConf(AlignakTest):
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
 
         args = {
-            'env_file': self.env_file,
+            'env_file': self.env_filename,
             'alignak_name': 'my-alignak', 'daemon_name': None,
         }
         sched = schedulerdaemon(**args)
-        sched.load_config_file()
         sched.load_modules_manager('scheduler-name')
         if hasattr(sched, 'modules'):
             assert 0 == len(sched.modules)
@@ -90,11 +89,10 @@ class TestSetupNewConf(AlignakTest):
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
 
         args = {
-            'env_file': self.env_file,
+            'env_file': self.env_filename,
             'alignak_name': 'my-alignak', 'daemon_name': None,
         }
         receiv = receiverdaemon(**args)
-        receiv.load_config_file()
         receiv.load_modules_manager('receiver-name')
         if hasattr(receiv, 'modules'):
             assert 0 == len(receiv.modules)
@@ -133,11 +131,10 @@ class TestSetupNewConf(AlignakTest):
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
 
         args = {
-            'env_file': self.env_file,
+            'env_file': self.env_filename,
             'alignak_name': 'my-alignak', 'daemon_name': None,
         }
         poller = pollerdaemon(**args)
-        poller.load_config_file()
         poller.load_modules_manager('poller-name')
         if hasattr(poller, 'modules'):
             assert 0 == len(poller.modules)
@@ -171,11 +168,10 @@ class TestSetupNewConf(AlignakTest):
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
 
         args = {
-            'env_file': self.env_file,
+            'env_file': self.env_filename,
             'alignak_name': 'my-alignak', 'daemon_name': None,
         }
         broker = brokerdaemon(**args)
-        broker.load_config_file()
         broker.load_modules_manager('broker-name')
         if hasattr(broker, 'modules'):
             assert 0 == len(broker.modules)
@@ -217,11 +213,10 @@ class TestSetupNewConf(AlignakTest):
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
 
         args = {
-            'env_file': self.env_file,
+            'env_file': self.env_filename,
             'alignak_name': 'my-alignak', 'daemon_name': None,
         }
         reac = reactionnerdaemon(**args)
-        reac.load_config_file()
         reac.load_modules_manager('reactionner-name')
         if hasattr(reac, 'modules'):
             assert 0 == len(reac.modules)

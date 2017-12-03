@@ -76,45 +76,77 @@ class Dispatcher:
     It has to handle spare, realms, poller tags etc.
     """
 
-    # Load all elements, set them as not assigned
-    # and add them to elements, so loop will be easier :)
-    def __init__(self, conf, arbiter):
-        self.arbiter = arbiter
-        # Pointer to the whole conf
+    def __init__(self, conf, arbiter_link):
+        """Initialize the dispatcher
+
+        Note that the arbiter param is an ArbiterLink, not an Arbiter daemon. Thus it is only
+        an interface to the running Arbiter daemon...
+
+        :param conf: the whole Alignak configuration as parsed by the Arbiter
+        :type conf: Config
+        :param arbiter_link: the link to the arbiter that parsed this configuration
+        :type arbiter_link: ArbiterLink
+        """
+        self.arbiter_link = arbiter_link
         self.conf = conf
-        logger.debug("Dispatcher __init__: %s / %s", self.arbiter, self.conf)
+
+        logger.debug("Dispatcher __init__: %s / %s", self.arbiter_link, self.conf)
         if hasattr(self.conf, 'confs'):
             logger.debug("Dispatch conf confs: %s", self.conf.confs)
         else:
             logger.debug("Dispatch conf has no confs")
 
-        self.realms = conf.realms
-        # Direct pointer to important elements for us
+        logger.debug("Dispatcher configuration packs:")
+        print("Dispatcher configuration packs:")
+        for cfg_id in self.conf.packs:
+            pack = self.conf.packs[cfg_id]
+            print("  . %s, flavor:%s, %s" %
+                  (pack.uuid,
+                   getattr(pack, 'push_flavor', 'None'),
+                   pack))
 
+        # Direct pointer to important elements for us
+        self.realms = conf.realms
+        logger.debug("Dispatcher realms configuration:")
+        print("Dispatcher realms configuration:")
+        for realm in self.realms:
+            logger.debug("- %s", realm)
+            print("- %s" % realm)
+            for cfg_id in realm.confs:
+                realm_config = realm.confs[cfg_id]
+                print("  . %s, flavor:%s, %s" %
+                      (realm_config.uuid,
+                       getattr(realm_config, 'push_flavor', 'None'),
+                       realm_config))
+
+        logger.debug("Dispatcher satellites configuration:")
+        print("Dispatcher satellites configuration:")
         for sat_type in ('arbiters', 'schedulers', 'reactionners',
                          'brokers', 'receivers', 'pollers'):
             setattr(self, sat_type, getattr(self.conf, sat_type))
+            logger.debug("- %s", getattr(self, sat_type))
+            print("- %s" % getattr(self, sat_type))
 
             # for each satellite, we look if current arbiter have a specific
             # satellitemap value set for this satellite.
             # if so, we give this map to the satellite (used to build satellite URI later)
-            if arbiter is None:
+            if arbiter_link is None:
                 continue
 
-            key = sat_type[:-1] + '_name'  # i.e: schedulers -> scheduler_name
             for satellite in getattr(self, sat_type):
-                sat_name = getattr(satellite, key)
-                satellite.set_arbiter_satellitemap(arbiter.satellitemap.get(sat_name, {}))
+                satellite.set_arbiter_satellitemap(arbiter_link.satellitemap.get(satellite.name, {}))
 
         self.dispatch_queue = {'schedulers': [], 'reactionners': [],
                                'brokers': [], 'pollers': [], 'receivers': []}
-        self.elements = []  # all elements, sched and satellites
-        self.satellites = []  # only satellites not schedulers
 
-        for cfg in self.conf.confs.values():
-            cfg.is_assigned = False
-            cfg.assigned_to = None
-            cfg.push_flavor = 0
+        # I remove this because it is already done when the packs are built!
+        # for cfg in self.conf.confs.values():
+        #     cfg.is_assigned = False
+        #     cfg.assigned_to = None
+        #     cfg.push_flavor = 0
+
+        self.elements = []  # all elements, including schedulers and satellites
+        self.satellites = []  # only satellites not schedulers
 
         # Add satellites in the good lists
         self.elements.extend(self.schedulers)
@@ -134,10 +166,14 @@ class Dispatcher:
         self.first_dispatch_done = False
 
         # Prepare the satellites confs
+        print("Prepare satellites configuration:")
         for satellite in self.satellites:
             satellite.prepare_for_conf()
+            print("- %s: %s" % (satellite.name, satellite.cfg))
 
         # Some properties must be given to satellites from global
+        # todo: This should not be necessary ! The pollers should have their own configuration!
+        # todo: indeed, this should be done for all the global alignak configuration parameters!!!
         # configuration, like the max_plugins_output_length to pollers
         parameters = {'max_plugins_output_length': self.conf.max_plugins_output_length}
         for poller in self.pollers:
@@ -168,7 +204,7 @@ class Dispatcher:
 
         for arb in self.arbiters:
             # If not me, but not the master too
-            if arb != self.arbiter and arb.spare:
+            if arb != self.arbiter_link and arb.spare:
                 arb.update_infos(now)
 
     def check_dispatch(self):
@@ -179,7 +215,7 @@ class Dispatcher:
         # Check if the other arbiter has a conf, but only if I am a master
         for arb in self.arbiters:
             # If not me and I'm a master
-            if arb != self.arbiter and self.arbiter and not self.arbiter.spare:
+            if arb != self.arbiter_link and self.arbiter_link and not self.arbiter_link.spare:
                 if not arb.have_conf(self.conf.magic_hash):
                     if not hasattr(self.conf, 'whole_conf_pack'):
                         logger.error('CRITICAL: the arbiter try to send a configuration but '
@@ -316,7 +352,7 @@ class Dispatcher:
         # I ask satellites which sched_id they manage. If I do not agree, I ask
         # them to remove it
         for satellite in self.satellites:
-            sat_type = satellite.get_my_type()
+            sat_type = satellite.type
             if not satellite.reachable:
                 continue
             cfg_ids = satellite.managed_confs  # what_i_managed()
@@ -385,10 +421,14 @@ class Dispatcher:
 
         arbiters_cfg = {}
         for arb in self.arbiters:
+            print("An arbiter to dispatch: %s" % arb)
             arbiters_cfg[arb.uuid] = arb.give_satellite_cfg()
+            print("- : %s" % arbiters_cfg[arb.uuid])
 
         for realm in self.realms:
+            print("A realm to dispatch: %s" % realm)
             for cfg in realm.confs.values():
+                print("- cfg: %s" % cfg)
                 for sat_type in ('reactionner', 'poller', 'broker', 'receiver'):
                     self.prepare_dispatch_other_satellites(sat_type, realm, cfg, arbiters_cfg)
 
@@ -400,6 +440,7 @@ class Dispatcher:
         """
         for realm in self.realms:
             conf_to_dispatch = [cfg for cfg in realm.confs.values() if not cfg.is_assigned]
+            print("A configuration to dispatch: %s" % conf_to_dispatch)
 
             # Now we get in scheds all scheduler of this realm and upper so
             scheds = self.get_scheduler_ordered_list(realm)
@@ -455,10 +496,10 @@ class Dispatcher:
                         'conf': realm.serialized_confs[conf.uuid],
                         'override_conf': sched.get_override_configuration(),
                         'modules': sched.modules,
-                        'arbiter_name': self.arbiter.arbiter_name,
+                        'arbiter_name': self.arbiter_link.name,
                         'alignak_name': conf.alignak_name,
                         'satellites': satellites,
-                        'instance_name': sched.scheduler_name,
+                        'instance_name': sched.name,
                         'conf_uuid': conf.uuid,
                         'push_flavor': conf.push_flavor,
                         'skip_initial_broks': sched.skip_initial_broks,
@@ -482,9 +523,9 @@ class Dispatcher:
                     # We updated all data for this scheduler
                     pickled_conf = cPickle.dumps(conf_package)
                     logger.info('[%s] scheduler configuration %s size: %d bytes',
-                                realm.get_name(), sched.scheduler_name, sys.getsizeof(pickled_conf))
+                                realm.get_name(), sched.name, sys.getsizeof(pickled_conf))
                     logger.info('[%s] configuration %s (%s) assigned to %s',
-                                realm.get_name(), conf.uuid, conf.push_flavor, sched.scheduler_name)
+                                realm.get_name(), conf.uuid, conf.push_flavor, sched.name)
                     sched.managed_confs = {conf.uuid: conf.push_flavor}
 
                     # Now we generate the conf for satellites:
@@ -503,7 +544,7 @@ class Dispatcher:
                     # The config is prepared for a scheduler, no need check another scheduler
                     break
 
-        nb_missed = len([cfg for cfg in self.conf.confs.values() if not cfg.is_assigned])
+        nb_missed = len([cfg for cfg in self.conf.parts.values() if not cfg.is_assigned])
         if nb_missed > 0:
             logger.warning("All schedulers configurations are not dispatched, %d are missing",
                            nb_missed)
@@ -606,7 +647,7 @@ class Dispatcher:
                 scheduler.is_sent = True
         for sat_type in ('reactionner', 'poller', 'broker', 'receiver'):
             for satellite in self.satellites:
-                if satellite.get_my_type() == sat_type:
+                if satellite.type == sat_type:
                     if satellite.is_sent:
                         continue
                     logger.info('Sending configuration to %s %s', sat_type, satellite.get_name())

@@ -101,14 +101,13 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
     # pylint: disable=too-many-arguments
     def __init__(self, **kwargs):
+        """Arbiter daemon initialisation
+
+        :param kwargs: command line arguments
+        """
         self.monitoring_config_files = []
 
-        # Default vs command line daemon parameter
-        daemon_name = 'arbiter-master'
-        if 'daemon_name' in kwargs and kwargs['daemon_name']:
-            daemon_name = kwargs['daemon_name']
-
-        super(Arbiter, self).__init__(daemon_name, **kwargs)
+        super(Arbiter, self).__init__(kwargs.get('daemon_name', 'Default-arbiter'), **kwargs)
 
         # Specific arbiter command line parameters
         if 'monitoring_files' in kwargs and kwargs['monitoring_files']:
@@ -123,6 +122,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             # Monitoring files in the arguments overload the ones defined
             # in the environment configuration file
             self.monitoring_config_files = kwargs['monitoring_files']
+            logger.warning("Got some configuration files: %s", self.monitoring_config_files)
         if not self.monitoring_config_files:
             sys.exit("The Alignak environment file is not existing "
                      "or do not define any monitoring configuration files. "
@@ -144,7 +144,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         self.broks = {}
         self.is_master = False
-        self.myself = None
+        self.link_to_myself = None
 
         self.nb_broks_send = 0
 
@@ -233,20 +233,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 logger.debug("Satellite '%s' initial brok: %s", satellite, brok)
                 self.add(brok)
 
-    @staticmethod
-    def get_daemon_links(daemon_type):  # pragma: no cover, not used anywhere
-        """Get the name of arbiter link (here arbiters)
-
-        TODO: use or remove this function!
-
-        :param daemon_type: daemon type
-        :type daemon_type: str
-        :return: named used to stroke this deamon type links
-        :rtype: str
-        """
-        # the attribute name to get these differs for schedulers and arbiters
-        return daemon_type + 's'
-
     # pylint: disable=too-many-branches
     def load_monitoring_config_file(self):  # pylint: disable=R0915
         """Load main configuration file (alignak.cfg)::
@@ -272,13 +258,12 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             logger.info("Arbiter is in configuration check mode")
             logger.info("-----")
 
-        logger.info("Loading configuration")
+        logger.info("Loading configuration from %s", self.monitoring_config_files)
         # REF: doc/alignak-conf-dispatching.png (1)
         buf = self.conf.read_config(self.monitoring_config_files)
         raw_objects = self.conf.read_config_buf(buf)
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
-            logger.info(self.conf.conf_is_correct)
             err = "*** One or more problems were encountered while processing " \
                   "the config files (first check)..."
             logger.error(err)
@@ -287,15 +272,19 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             sys.exit(err)
 
         logger.info("I correctly loaded the configuration files")
-        self.alignak_name = getattr(self.conf, "alignak_name", self.arbiter_name)
+        self.alignak_name = getattr(self.conf, "alignak_name", self.name)
         logger.info("Configuration for Alignak: %s", self.alignak_name)
 
+        # Alignak global environment file
+        # -------------------------------
         # Here we got the monitoring configuration from the Cfg configuration files
         # We must overload this configuration for the daemons and modules with the configuration
-        # declare in the alignak.ini file!
-
+        # declared in the Alignak environment (alignak.ini) file!
+        # We can overload the Alignak global configuration (alignak.cfg) with the global
+        # configuration defined in the Alignak environment file
         if self.alignak_env:
             # Get all the Alignak dameons from the configuration
+            logger.info("Getting daemons configuration...")
             for daemon_type in ['arbiter', 'broker', 'scheduler',
                                 'poller', 'reactionner', 'receiver']:
                 if raw_objects[daemon_type]:
@@ -303,15 +292,33 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                                    daemon_type)
                 raw_objects[daemon_type] = []
             for daemon_name, daemon_cfg in self.alignak_env.get_daemons().items():
+                logger.debug("Got a daemon configuration for %s", daemon_name)
                 if 'type' not in daemon_cfg:
                     self.conf.add_error("Ignoring daemon with an unknown type: %s" % daemon_name)
                     continue
+                logger.info("Got a daemon configuration for a %s named %s",
+                            daemon_cfg['type'], daemon_cfg['name'])
                 raw_objects[daemon_cfg['type']].append(daemon_cfg)
 
             # and then get all modules from the configuration
+            logger.info("Getting modules configuration...")
+            if raw_objects['module']:
+                logger.warning("Erasing modules configuration found in cfg files")
             raw_objects['module'] = []
             for module_name, module_cfg in self.alignak_env.get_modules().items():
                 raw_objects['module'].append(module_cfg)
+
+            # and then the global configuration.
+            # The properties defined in the alignak.cfg file are not yet set! So we set the one
+            # got from the environment
+            logger.info("Getting alignak configuration...")
+            for key, value in self.alignak_env.get_alignak_configuration().items():
+                if key in self.conf.properties:
+                    entry = self.conf.properties[key]
+                    setattr(self.conf, key, entry.pythonize(value))
+                else:
+                    setattr(self.conf, key, value)
+                logger.info("- setting '%s' as %s", key, getattr(self.conf, key))
 
         # Create objects for our arbiters and modules
         self.conf.create_objects_for_type(raw_objects, 'arbiter')
@@ -319,51 +326,60 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         self.conf.early_arbiter_linking()
 
-        # Search which arbiter I am in the arbiters list
-        for arbiter in self.conf.arbiters:
-            logger.info("I have arbiter in my configuration: %s", arbiter.get_name())
-            if arbiter.get_name() in ['Default-Arbiter', self.arbiter_name]:
-                logger.info("I found myself in the configuration: %s", arbiter.get_name())
-                # Arbiter is master one
-                arbiter.need_conf = False
-                self.myself = arbiter
-                self.is_master = not self.myself.spare
-                if self.is_master:
-                    logger.info("I am the master Arbiter: %s", arbiter.get_name())
-                else:
-                    logger.info("I am a spare Arbiter: %s", arbiter.get_name())
-                # export this data to our statsmgr object :)
-                statsd_host = getattr(self.conf, 'statsd_host', 'localhost')
-                statsd_port = getattr(self.conf, 'statsd_port', 8125)
-                statsd_prefix = getattr(self.conf, 'statsd_prefix', 'alignak')
-                statsd_enabled = getattr(self.conf, 'statsd_enabled', False)
-                statsmgr.register(arbiter.get_name(), 'arbiter',
-                                  statsd_host=statsd_host, statsd_port=statsd_port,
-                                  statsd_prefix=statsd_prefix, statsd_enabled=statsd_enabled)
-
-                # Set myself as alive ;)
-                self.myself.alive = True
-            else:  # not me
+        # Search which arbiter I am in the arbiter links list
+        for lnk_arbiter in self.conf.arbiters:
+            logger.info("I have arbiter links in my configuration: %s", lnk_arbiter.name)
+            print("Found arbiter link in the configuration: %s / %s", lnk_arbiter.name, lnk_arbiter)
+            print("I am: %s", self.name)
+            if lnk_arbiter.name != self.name:
                 # Arbiter is not me!
-                logger.info("Found another arbiter in the configuration: %s", arbiter.get_name())
-                arbiter.need_conf = True
+                logger.info("I found another arbiter in my configuration: %s", lnk_arbiter.name)
+                # And this arbiter needs to receive a configuration
+                lnk_arbiter.need_conf = True
+                continue
 
-        if not self.myself:
+            logger.info("I found myself in the configuration: %s", lnk_arbiter.name)
+            self.link_to_myself = lnk_arbiter
+            # Set myself as alive ;)
+            self.link_to_myself.alive = True
+
+            # We consider that this arbiter is a master one...
+            self.is_master = not self.link_to_myself.spare
+            if self.is_master:
+                logger.info("I am the master Arbiter: %s", lnk_arbiter.name)
+            else:
+                logger.info("I am a spare Arbiter: %s", lnk_arbiter.name)
+
+            # ... and that this arbiter do not need to receive a configuration
+            lnk_arbiter.need_conf = False
+
+            # todo: is it really the right place to configure this ? Not sure at all!
+            # We export this data to our statsmgr object :)
+            statsd_host = getattr(self.conf, 'statsd_host', 'localhost')
+            statsd_port = getattr(self.conf, 'statsd_port', 8125)
+            statsd_prefix = getattr(self.conf, 'statsd_prefix', 'alignak')
+            statsd_enabled = getattr(self.conf, 'statsd_enabled', False)
+            statsmgr.register(lnk_arbiter.get_name(), 'arbiter',
+                              statsd_host=statsd_host, statsd_port=statsd_port,
+                              statsd_prefix=statsd_prefix, statsd_enabled=statsd_enabled)
+
+        if not self.link_to_myself:
             sys.exit("Error: I cannot find my own Arbiter object (%s), I bail out. "
-                     "To solve this, please change the arbiter_name parameter in "
-                     "the arbiter configuration file (certainly arbiter-master.cfg) "
+                     "To solve this, please change the arbiter name parameter in "
+                     "the Alignak configuration file (certainly alignak.ini) "
                      "with the value '%s'."
-                     " Thanks." % (self.arbiter_name, socket.gethostname()))
+                     " Thanks." % (self.name, socket.gethostname()))
 
         # Whether I am a spare arbiter, I will parse the whole configuration. This may be useful
         # if the master fails before sending its configuration to me!
 
         # Ok it's time to load the module manager now!
-        self.load_modules_manager(self.myself.get_name())
+        self.load_modules_manager(self.link_to_myself.name)
         # we request the instances without them being *started*
         # (for those that are concerned ("external" modules):
         # we will *start* these instances after we have been daemonized (if requested)
-        self.do_load_modules(self.myself.modules)
+        # todo: use self.modules, no? And not the modules of my link ...
+        self.do_load_modules(self.link_to_myself.modules)
 
         if not self.is_master:
             logger.info("I am not the master arbiter, I stop parsing the configuration")
@@ -384,6 +400,10 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         for daemon_type in ['scheduler', 'broker', 'poller', 'reactionner', 'receiver']:
             self.conf.create_objects_for_type(raw_objects, daemon_type)
         self.conf.create_objects(raw_objects)
+
+        for d in self.conf.schedulers:
+            print("Found sched in the configuration: %s / %s", d, type(d))
+            print(" - : %s" % d.__dict__)
 
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
@@ -532,12 +552,13 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # configuration (if some are found because they should not be there)...
 
         self.accept_passive_unknown_check_results = BoolProp.pythonize(
-            getattr(self.myself, 'accept_passive_unknown_check_results', '0')
+            getattr(self.link_to_myself, 'accept_passive_unknown_check_results', '0')
         )
 
         #  We need to set self.host & self.port to be used by do_daemon_init_and_start
-        self.host = self.myself.address
-        self.port = self.myself.port
+        # todo: check those are the correct one! address is not host !!!
+        self.host = self.link_to_myself.address
+        self.port = self.link_to_myself.port
 
         logger.info("Configuration Loaded")
 
@@ -760,7 +781,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 return
 
             # Set my own process title
-            self.set_proctitle(self.myself.get_name())
+            self.set_proctitle(self.name)
 
             # ok we are now fully daemonized (if requested)
             # now we can start our "external" modules (if any):
@@ -806,21 +827,27 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
             logger.info("Got new configuration #%s", getattr(conf, 'magic_hash', '00000'))
 
-            logger.info("I am: %s", self.arbiter_name)
+            logger.info("I am: %s", self.name)
             # This is my new configuration now ...
             self.cur_conf = conf
             self.conf = conf
             # Ready to get a new one ...
             self.new_conf = None
-            for arb in self.conf.arbiters:
-                if arb.get_name() in ['Default-Arbiter', self.arbiter_name]:
-                    self.myself = arb
+            for lnk_arbiter in self.conf.arbiters:
+                logger.info("I have arbiter links in my configuration: %s", lnk_arbiter.name)
+                print(
+                "Found arbiter link in the configuration: %s / %s", lnk_arbiter.name, lnk_arbiter)
+                print("I am: %s", self.name)
+                if lnk_arbiter.name != self.name:
+                    # Arbiter is not me!
+                    logger.info("I found another arbiter in my configuration: %s", lnk_arbiter.name)
+                    # todo: I am not concerned, sure?
+                    continue
 
-                    self.accept_passive_unknown_check_results = BoolProp.pythonize(
-                        getattr(self.myself, 'accept_passive_unknown_check_results', '0')
-                    )
-
-                    logger.info("I found myself in the configuration")
+                logger.info("I found myself in the new configuration: %s", lnk_arbiter.name)
+                self.link_to_myself = lnk_arbiter
+                # Set myself as alive ;)
+                self.link_to_myself.alive = True
 
     def do_loop_turn(self):
         """Loop turn for Arbiter
@@ -870,11 +897,11 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             # Now check if master is dead or not
             now = time.time()
             if now - self.last_master_ping > master_timeout:
-                logger.info("Arbiter Master is dead. The arbiter %s take the lead",
-                            self.myself.get_name())
-                for arbiter in self.conf.arbiters:
-                    if not arbiter.spare:
-                        arbiter.alive = False
+                logger.info("Arbiter Master is dead. The arbiter %s takes the lead!",
+                            self.link_to_myself.name)
+                for arbiter_link in self.conf.arbiters:
+                    if not arbiter_link.spare:
+                        arbiter_link.alive = False
                 self.must_run = True
                 break
 
@@ -917,16 +944,18 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         :return:None
         """
-        # Before running, I must be sure who am I
-        # The arbiters change, so we must re-discover the new self.me
-        for arbiter in self.conf.arbiters:
-            if arbiter.get_name() in ['Default-Arbiter', self.arbiter_name]:
-                self.myself = arbiter
-                logger.info("I am the arbiter: %s", self.myself.arbiter_name)
+        # # Before running, I must be sure who am I
+        # # The arbiters change, so we must re-discover the new self.me
+        # for arbiter in self.conf.arbiters:
+        #     if arbiter.get_name() in ['Default-Arbiter', self.name]:
+        #         self.link_to_myself = arbiter
+        #         logger.info("I am the arbiter: %s", self.link_to_myself.name)
+        #
+        logger.info("I am the arbiter: %s", self.link_to_myself.name)
 
         logger.info("Begin to dispatch configuration to the satellites")
 
-        self.dispatcher = Dispatcher(self.conf, self.myself)
+        self.dispatcher = Dispatcher(self.conf, self.link_to_myself)
         self.dispatcher.check_alive()
         self.dispatcher.check_dispatch()
         # REF: doc/alignak-conf-dispatching.png (3)
@@ -949,6 +978,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         while self.must_run and not self.interrupted and not self.need_config_reload:
             # Make a pause and check if the system time changed
+            # todo: this will make a time.sleep(1) !
             self.make_a_pause(timeout)
 
             # Try to see if one of my module is dead, and
@@ -993,8 +1023,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             # we must give him our broks
             self.push_broks_to_broker()
             self.get_external_commands_from_satellites()
-            # self.get_external_commands_from_receivers()
-            # send_conf_to_schedulers()
 
             if self.nb_broks_send != 0:
                 logger.debug("Nb Broks send: %d", self.nb_broks_send)
@@ -1013,15 +1041,14 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 self.dump_memory()
                 self.need_dump_memory = False
 
-    def get_daemons(self, daemon_type):
-        """Returns the daemons list defined in our conf for the given type
+    def get_daemon_links(self, daemon_type):
+        """Returns the daemon links list as defined in our configuration for the given type
 
         :param daemon_type: deamon type needed
         :type daemon_type: str
         :return: attribute value if exist
         :rtype: str | None
         """
-        # shouldn't the 'daemon_types' (whatever it is above) be always present?
         return getattr(self.conf, daemon_type + 's', None)
 
     def get_retention_data(self):  # pragma: no cover, useful?
@@ -1078,7 +1105,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # call the daemon one
         res = super(Arbiter, self).get_stats_struct()
         res.update({
-            'name': self.myself.get_name() if self.myself else self.name, 'type': 'arbiter'
+            'name': self.link_to_myself.get_name() if self.link_to_myself else self.name, 'type': 'arbiter'
         })
         res['hosts'] = 0
         res['services'] = 0
@@ -1088,7 +1115,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         metrics = res['metrics']
         # metrics specific
         metrics.append('arbiter.%s.external-commands.queue %d %d' %
-                       (self.myself.get_name() if self.myself else self.name,
+                       (self.link_to_myself.get_name() if self.link_to_myself else self.name,
                         len(self.external_commands), now))
 
         return res

@@ -94,17 +94,19 @@ class ArbiterInterface(GenericInterface):
         """
         with self.app.conf_lock:
             res = {}
-            for s_type in ['arbiter', 'scheduler', 'poller', 'reactionner', 'receiver',
-                           'broker']:
-                if daemon_type and daemon_type != s_type:
+            if not daemon_type:
+                return res
+
+            for s_type in ['arbiter', 'scheduler', 'poller', 'reactionner', 'receiver', 'broker']:
+                if daemon_type != s_type:
                     continue
                 satellite_list = []
                 res[s_type] = satellite_list
                 daemon_name_attr = s_type + "_name"
-                daemons = self.app.get_daemons(s_type)
-                for dae in daemons:
-                    if hasattr(dae, daemon_name_attr):
-                        satellite_list.append(getattr(dae, daemon_name_attr))
+                for daemon_link in self.app.get_daemon_links(s_type):
+                    # if hasattr(daemon_link, daemon_name_attr):
+                    #     satellite_list.append(getattr(daemon_link, daemon_name_attr))
+                    satellite_list.append(daemon_link.name)
             return res
 
     @cherrypy.expose

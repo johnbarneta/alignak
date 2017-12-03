@@ -84,16 +84,14 @@ class Receiver(Satellite):
     })
 
     def __init__(self, **kwargs):
-        self.daemon_name = 'receiver-master'
-        if 'daemon_name' in kwargs and kwargs['daemon_name']:
-            self.daemon_name = kwargs['daemon_name']
+        """Receiver daemon initialisation
 
-        super(Receiver, self).__init__(self.daemon_name, **kwargs)
+        :param kwargs: command line arguments
+        """
+        super(Receiver, self).__init__(kwargs.get('daemon_name', 'Default-receiver'), **kwargs)
 
-        # Our arbiters
+        # Our related daemons
         self.arbiters = {}
-
-        # Our pollers and reactionners
         self.pollers = {}
         self.reactionners = {}
 

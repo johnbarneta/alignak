@@ -182,6 +182,7 @@ class template_Daemon_Start():
         # Do not call request_stop because it sys.exit ... and this stops the test!
         # daemon.request_stop()
         # Instead call the same code hereunder:
+        print("Stopping daemon: %s" % daemon.name)
         daemon.unlink()
         daemon.do_stop()
 
@@ -215,7 +216,7 @@ class template_Daemon_Start():
 
         :return:
         """
-        # # Start normally
+        # Start normally
         daemon = self.get_daemon(is_daemon=False, do_replace=False, free_port=False)
         assert daemon.debug_file == None
         assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
@@ -287,11 +288,13 @@ class template_Daemon_Start():
 
         # Get daemon stratistics
         stats = daemon.get_stats_struct()
+        print("Daemon: %s" % daemon.__dict__)
         assert 'metrics' in stats
         assert 'version' in stats
         assert 'name' in stats
+        assert 'type' in stats
         assert stats['name'] == daemon.name
-        assert stats['type'] == daemon.daemon_type
+        assert stats['type'] == daemon.type
         assert 'modules' in stats
 
         time.sleep(2)
@@ -399,11 +402,13 @@ class template_Daemon_Start():
         expected_result = [
             "-----",
             "Alignak %s - %s daemon" % (VERSION, daemon.name),
-            "Copyright (c) 2015-2016: Alignak Team",
+            "Copyright (c) 2015-2017: Alignak Team",
             "License: AGPL",
-            "-----"
+            "-----",
+            "My pid: %s" % daemon.pid,
+            "My configuration: "
         ]
-        assert daemon.get_header() == expected_result
+        assert daemon.get_header()[:7] == expected_result
 
     def test_trace_unrecoverable(self):
         """ Test unrecoverable trace

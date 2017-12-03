@@ -96,11 +96,11 @@ class Broker(BaseSatellite):
     })
 
     def __init__(self, **kwargs):
-        self.daemon_name = 'broker-master'
-        if 'daemon_name' in kwargs and kwargs['daemon_name']:
-            self.daemon_name = kwargs['daemon_name']
+        """Broker daemon initialisation
 
-        super(Broker, self).__init__(self.daemon_name, **kwargs)
+        :param kwargs: command line arguments
+        """
+        super(Broker, self).__init__(kwargs.get('daemon_name', 'Default-broker'), **kwargs)
 
         # Our arbiters
         self.arbiters = {}
@@ -639,8 +639,8 @@ class Broker(BaseSatellite):
         self.external_commands = self.external_commands[:]
 
         # And now modules
-        self.have_modules = False
-        self.modules_manager.clear_instances()
+        # self.have_modules = False
+        # self.modules_manager.clear_instances()
 
     def get_stats_struct(self):
         """Get information of modules (internal and external) and add metrics of them

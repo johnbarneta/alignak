@@ -491,7 +491,7 @@ class ExternalCommandManager:
 
         self.confs = None
         if self.mode == 'dispatcher':
-            self.confs = conf.confs
+            self.confs = conf.parts
 
         self.accept_passive_unknown_check_results = accept_unknown
 
@@ -638,7 +638,6 @@ class ExternalCommandManager:
         :return: unknown check result brok
         :rtype: alignak.objects.brok.Brok
         """
-
         match = re.match(
             r'^\[([0-9]{10})] PROCESS_(SERVICE)_CHECK_RESULT;'
             r'([^\;]*);([^\;]*);([^\;]*);([^\|]*)(?:\|(.*))?', cmd_line)
@@ -786,7 +785,8 @@ class ExternalCommandManager:
                         if host is None:
                             if self.accept_passive_unknown_check_results:
                                 brok = self.get_unknown_check_result_brok(command)
-                                self.daemon.add_brok(brok)
+                                if brok:
+                                    self.daemon.add_brok(brok)
                             else:
                                 logger.warning("A command was received for the host '%s', "
                                                "but the host could not be found!", val)

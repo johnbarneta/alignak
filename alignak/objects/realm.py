@@ -168,7 +168,7 @@ class Realm(Itemgroup):
         # calls... not GOOD!
         if self.rec_tag:
             err = "Error: we've got a loop in realm definition %s" % self.get_name()
-            self.configuration_errors.append(err)
+            self.add_error(err)
             return None
 
         # Ok, not a loop, we tag it and continue
@@ -356,7 +356,7 @@ class Realms(Itemgroups):
     """Realms manage a list of Realm objects, used for parsing configuration
 
     """
-    name_property = "realm_name"  # is used for finding hostgroups
+    name_property = "realm_name"  # is used for finding realms
     inner_class = Realm
 
     def linkify(self):
@@ -456,7 +456,7 @@ class Realms(Itemgroups):
             if check:
                 msg = "No realm is defined as the default one! I set %s as the default realm" \
                       % (default_realm_name)
-                self.configuration_errors.append(msg)
+                self.add_error(msg)
 
         default_realm = found[0]
         if len(found) > 1:
@@ -474,7 +474,7 @@ class Realms(Itemgroups):
                 msg = "More than one realm is defined as the default one: %s. " \
                       "I set %s as the temporary default realm." \
                   % (','.join(found_names), default_realm_name)
-                self.configuration_errors.append(msg)
+                self.add_error(msg)
 
         return default_realm
 

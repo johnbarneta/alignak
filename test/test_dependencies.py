@@ -402,7 +402,7 @@ class TestDependencies(AlignakTest):
         self.print_header()
         with pytest.raises(SystemExit):
             self.setup_with_file('cfg/dependencies/cfg_dependencies_bad1.cfg')
-        self.show_logs()
+        # self.show_logs()
         self.assert_any_cfg_log_match(re.escape(
                 "Configuration in hostdependency::unknown/unknown is incorrect"
         ))

@@ -32,7 +32,7 @@ class TestPollerTag(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_poller_tag.cfg')
+        self.setup_with_file('cfg/cfg_poller_tag.cfg', 'cfg/poller_tag/alignak.ini')
         self.assertTrue(self.conf_is_correct)
 
         # Our scheduler

@@ -131,7 +131,7 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_dispatcher_realm.cfg')
+        self.setup_with_file('cfg/cfg_dispatcher_realm.cfg', 'cfg/dispatcher/alignak-realm2.ini')
         assert 2 == len(self.arbiter.dispatcher.realms)
         for realm in self.arbiter.dispatcher.realms:
             assert 1 == len(realm.confs)
@@ -141,12 +141,7 @@ class TestDispatcher(AlignakTest):
         assert 8 == len(self.arbiter.dispatcher.satellites)
 
         assert set([4, 6]) == set([len(self.schedulers['scheduler-master'].sched.hosts),
-                                              len(self.schedulers['realm2scheduler-master'].sched.hosts)])
-
-        # for satellite in self.arbiter.dispatcher.satellites:
-        #     self.assertNotEqual({}, satellite.cfg['schedulers'], satellite.get_name())
-        #     self.assertEqual(1, len(satellite.cfg['schedulers']),
-        #                      'must have 1 scheduler in {0}'.format(satellite.get_name()))
+                                   len(self.schedulers['realm2-scheduler-master'].sched.hosts)])
 
     def test_realms_with_sub(self):
         """ Test with 2 realms but some satellites are sub_realms:
@@ -177,7 +172,8 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_dispatcher_realm_with_sub.cfg')
+        self.setup_with_file('cfg/cfg_dispatcher_realm_with_sub.cfg',
+                             'cfg/dispatcher/alignak-sub.ini')
         # Got 3 realms
         assert 3 == len(self.arbiter.dispatcher.realms)
         for realm in self.arbiter.dispatcher.realms:

@@ -263,7 +263,7 @@ class Stats(object):
 
         # local statsd part
         self.statsd_host = statsd_host
-        self.statsd_port = statsd_port
+        self.statsd_port = int(statsd_port)
         self.statsd_prefix = statsd_prefix
         self.statsd_enabled = statsd_enabled
 

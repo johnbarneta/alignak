@@ -178,7 +178,7 @@ class TestConfig(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_config_simple.cfg')
+        self.setup_with_file('cfg/cfg_default.cfg', 'cfg/config/alignak-no-daemons.ini')
         assert self.conf_is_correct
 
         # No error messages
@@ -507,14 +507,13 @@ class TestConfig(AlignakTest):
         assert len(self.configuration_errors) == 2
         self.assert_any_cfg_log_match(
             re.escape(
-                "[config] cannot open config file 'cfg/config/etc/broken_1/minimal.cfg' for "
-                "reading: [Errno 2] No such file or directory: "
-                "u'cfg/config/etc/broken_1/minimal.cfg'"
+                "cannot open file 'cfg/config/etc/broken_1/minimal.cfg' for reading: "
+                "[Errno 2] No such file or directory: u'cfg/config/etc/broken_1/minimal.cfg'"
             )
         )
         self.assert_any_cfg_log_match(
             re.escape(
-                "[config] cannot open config file 'cfg/config/resource.cfg' for reading: "
+                "cannot open file 'cfg/config/resource.cfg' for reading: "
                 "[Errno 2] No such file or directory: u'cfg/config/resource.cfg'"
             )
         )
@@ -683,12 +682,12 @@ class TestConfig(AlignakTest):
         assert len(self.configuration_errors) == 2
         self.assert_any_cfg_log_match(
             re.escape(
-                "[config] cannot open config dir 'cfg/config/not-existing-dir' for reading"
+                "cannot open directory 'cfg/config/not-existing-dir' for reading"
             )
         )
         self.assert_any_cfg_log_match(
             re.escape(
-                "[config] cannot open config file 'cfg/config/resource.cfg' for reading: "
+                "cannot open file 'cfg/config/resource.cfg' for reading: "
                 "[Errno 2] No such file or directory: u'cfg/config/resource.cfg'"
             )
         )
@@ -989,49 +988,37 @@ class TestConfig(AlignakTest):
             "got hosts from another realm: Realm2"
         )
 
-    def test_bad_satellite_broker_realm_conf(self):
-        """ Configuration is not correct because a broker conf has an unknown realm
+    def test_bad_satellite_realm_conf(self):
+        """ Configuration is not correct because a daemon configuration has an unknown realm
 
         :return: None
         """
         self.print_header()
         with pytest.raises(SystemExit):
-            self.setup_with_file('cfg/cfg_bad_realm_in_broker.cfg')
+            self.setup_with_file('cfg/cfg_default.cfg', 'cfg/config/alignak-bad-realms.ini')
+            self.show_logs()
         assert not self.conf_is_correct
         self.show_configuration_logs()
 
-        self.assert_any_cfg_log_match(
-            "Configuration in broker::Broker-test is incorrect; "
-            "from: cfg/config/bad_realm_broker.cfg:1"
-        )
-        self.assert_any_cfg_log_match(
-            "The broker Broker-test got a unknown realm 'NoGood'"
-        )
-        self.assert_any_cfg_log_match(
-            "brokers configuration is incorrect!"
-        )
-
-    def test_bad_satellite_poller_realm_conf(self):
-        """ Configuration is not correct because a broker conf has an unknown realm
-
-        :return: None
-        """
-        self.print_header()
-        with pytest.raises(SystemExit):
-            self.setup_with_file('cfg/cfg_bad_realm_in_poller.cfg')
-        assert not self.conf_is_correct
-        self.show_configuration_logs()
-
-        self.assert_any_cfg_log_match(
-            "Configuration in poller::Poller-test is incorrect; "
-            "from: cfg/config/bad_realm_poller.cfg:1"
-        )
-        self.assert_any_cfg_log_match(
-            "The poller Poller-test got a unknown realm 'NoGood'"
-        )
-        self.assert_any_cfg_log_match(
-            "pollers configuration is incorrect!"
-        )
+        self.assert_any_cfg_log_match("Configuration in broker::broker-master is incorrect; from: ")
+        self.assert_any_cfg_log_match("The broker broker-master got a unknown realm 'Unknown'")
+        self.assert_any_cfg_log_match("brokers configuration is incorrect!"        )
+        self.assert_any_cfg_log_match("Configuration in scheduler::scheduler-master is incorrect; from: ")
+        self.assert_any_cfg_log_match("The scheduler scheduler-master got a unknown realm 'Unknown'")
+        self.assert_any_cfg_log_match("schedulers configuration is incorrect!")
+        self.assert_any_cfg_log_match("Configuration in poller::poller-master is incorrect; from: ")
+        self.assert_any_cfg_log_match("The poller poller-master got a unknown realm 'Unknown'")
+        self.assert_any_cfg_log_match("pollers configuration is incorrect!"        )
+        self.assert_any_cfg_log_match("Configuration in reactionner::reactionner-master is incorrect; from: ")
+        self.assert_any_cfg_log_match("The reactionner reactionner-master got a unknown realm 'Unknown'")
+        self.assert_any_cfg_log_match("reactionners configuration is incorrect!"        )
+        self.assert_any_cfg_log_match("Configuration in receiver::receiver-master is incorrect; from: ")
+        self.assert_any_cfg_log_match("The receiver receiver-master got a unknown realm 'Unknown'")
+        self.assert_any_cfg_log_match("receivers configuration is incorrect!")
+        # The arbiter may have an unknown realm...
+        # self.assert_any_cfg_log_match("Configuration in arbiter::arbiter-master is incorrect; from: ")
+        # self.assert_any_cfg_log_match("The arbiter arbiter-master got a unknown realm 'Unknown'")
+        # self.assert_any_cfg_log_match("arbiters configuration is incorrect!"        )
 
     def test_bad_service_interval(self):
         """ Configuration is not correct because of a bad check_interval in service

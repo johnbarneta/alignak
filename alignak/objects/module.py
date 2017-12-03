@@ -159,7 +159,7 @@ class Modules(Items):
     #                 new_modules.append(plug)
     #             else:
     #                 err = "[module] unknown %s module from %s" % (plug_name, module.get_name())
-    #                 module.configuration_errors.append(err)
+    #                 module.add_error(err)
     #         module.modules = new_modules
 
     # def explode(self):

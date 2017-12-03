@@ -233,6 +233,7 @@ class TestExternalCommands(AlignakTest):
             # broks = [b for b in self._broker['broks'].values()
             #          if b.type == 'unknown_host_check_result']
             # assert len(broks) == 1
+            self.show_logs()
             # ...and a warning log!
             self.assert_any_log_match("A command was received for the host 'not_found_host', "
                                       "but the host could not be found!")

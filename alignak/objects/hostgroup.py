@@ -258,7 +258,7 @@ class Hostgroups(Itemgroups):
             else:
                 err = "the hostgroup %s got an unknown realm '%s'" % \
                       (hostgroup.get_name(), hostgroup.realm)
-                hostgroup.configuration_errors.append(err)
+                hostgroup.add_error(err)
                 hostgroup.realm = None
                 continue
 
