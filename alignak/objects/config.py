@@ -2642,8 +2642,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
             logger.info("- cloning configuration: %s", cur_conf.name)
             print("- cloning configuration: %s -> %s" % (self.name, cur_conf.name))
 
-            # we need a deepcopy because each conf
-            # will have new hostgroups
+            # Copy the configuration objects lists. We need a deepcopy because each configuration
+            # will have some new groups... but we keep the samme uuid
             cur_conf.uuid = uuid.uuid4().hex
 
             types_creations = self.__class__.types_creations

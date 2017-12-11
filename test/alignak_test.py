@@ -122,9 +122,11 @@ class AlignakTest(unittest2.TestCase):
                 for line in lines:
                     outfile.write(line)
 
-    def setup_with_file(self, configuration_file, env_file=None, verbose=True):
+    def setup_with_file(self, configuration_file, env_file=None, verbose=False):
         """
-        Load alignak with defined configuration file
+        Load alignak with the provided configuration and environment files
+
+        If verbos is True the envirnment loading is printed out on the console.
 
         If the configuration loading fails, a SystemExit exception is raised to the caller.
 
@@ -151,6 +153,7 @@ class AlignakTest(unittest2.TestCase):
         self.reactionners = {}
         # The main arbiter and scheduler
         self.arbiter = None
+        self._scheduler_daemon = None
         self._scheduler = None
         self.conf_is_correct = False
         self.configuration_warnings = []
@@ -186,12 +189,6 @@ class AlignakTest(unittest2.TestCase):
 
         arbiter_cfg = None
         for daemon_section, daemon_cfg in self.alignak_env.get_daemons().items():
-            if 'type' not in daemon_cfg:
-                print("*** Ignoring daemon with an unknown type: %s" % daemon_section)
-                continue
-            if verbose:
-                print("Got a configuration for a %s named %s" % (daemon_cfg['type'], daemon_cfg['name']))
-                print(" -> %s" % (daemon_cfg))
             if daemon_cfg['type'] == 'arbiter':
                 arbiter_cfg = daemon_cfg
 
@@ -219,10 +216,10 @@ class AlignakTest(unittest2.TestCase):
             if self.arbiter.debug:
                 self.logger.setLevel(logging.DEBUG)
 
-            # Log will be broks
             for line in self.arbiter.get_header():
                 self.logger.info(line)
 
+            # Load and initialize the arbiter configuration
             self.arbiter.load_monitoring_config_file()
 
             # If this assertion does not match, then there is a bug in the arbiter :)
@@ -264,7 +261,6 @@ class AlignakTest(unittest2.TestCase):
         for broker in self.arbiter.dispatcher.brokers:
             print("Got a broker: %s" % broker.name)
             self.brokers[broker.name] = broker
-            # self._broker = self._scheduler.brokers['broker-master']
 
         # Build schedulers dictionary with the schedulers involved in the configuration
         self.eca = None
@@ -274,59 +270,89 @@ class AlignakTest(unittest2.TestCase):
                 'env_file': self.env_filename, 'daemon_name': scheduler.get_name(),
                 'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
                 'config_file': None, 'debug': False, 'debug_file': None,
-                'local_log': '/tmp/scheduler.log', 'port': None
+                'local_log': "/tmp/%s.log" % scheduler.get_name(), 'port': None
             }
-            sched_daemon = Alignak(**args)
-            sched_daemon.load_modules_manager(scheduler.name)
-            sched_daemon.new_conf = scheduler.conf_package
-            if sched_daemon.new_conf:
-                sched_daemon.setup_new_conf()
-            self.schedulers[scheduler.name] = sched_daemon
+            self._scheduler_daemon = Alignak(**args)
+            self._scheduler_daemon.load_modules_manager(scheduler.name)
+            self._scheduler_daemon.new_conf = scheduler.conf_package
+            if self._scheduler_daemon.new_conf:
+                self._scheduler_daemon.setup_new_conf()
+            self.schedulers[scheduler.name] = self._scheduler_daemon
 
             # Now create the scheduler external commands manager
             # We are an applyer: our role is not to dispatch commands, but to apply them
-            self.eca = ExternalCommandManager(sched_daemon.conf, 'applyer', sched_daemon)
+            self.eca = ExternalCommandManager(self._scheduler_daemon.conf, 'applyer', self._scheduler_daemon.sched)
             # Scheduler needs to know about this external command manager to use it if necessary
-            sched_daemon.sched.set_external_commands_manager(self.eca)
+            self._scheduler_daemon.sched.set_external_commands_manager(self.eca)
 
             # Store the last scheduler object to get used in some other functions!
-            self._scheduler = sched_daemon
+            # this is the real scheduler, not the scheduler daemon
+            self._scheduler = self._scheduler_daemon.sched
             print("Got a default scheduler: %s" % self._scheduler)
-            for broker in self._scheduler.brokers:
-                print("- with a broker: %s" % self._scheduler.brokers[broker])
-                self._broker = broker
+            for broker_link in self._scheduler_daemon.brokers:
+                broker_link = self._scheduler_daemon.brokers[broker_link]
+                print("-----\n- with a broker: %s" % broker_link)
+                for broker in self.arbiter.dispatcher.brokers:
+                    if broker.name != broker_link['name']:
+                        continue
+                    print("- found in the arbiter configuration: %s" % broker.name)
+                    print("- : %s" % broker.__dict__)
+
+                    args = {
+                        'env_file': self.env_filename, 'daemon_name': broker.get_name(),
+                        'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
+                        'config_file': None, 'debug': False, 'debug_file': None,
+                        'local_log': "/tmp/%s.log" % broker.get_name(), 'port': None
+                    }
+                    broker_daemon = Broker(**args)
+                    broker_daemon.load_modules_manager(broker.get_name())
+                    broker_daemon.new_conf = broker.cfg
+                    if broker_daemon.new_conf:
+                        broker_daemon.setup_new_conf()
+                    self._broker = broker_daemon
+                    print("Got a default broker: %s" % self._broker)
 
         # Initialize a Receiver daemon
-        args = {
-            'env_file': self.env_filename, 'daemon_name': 'receiver-test',
-            'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
-            'config_file': None, 'debug': False, 'debug_file': None,
-            'local_log': '/tmp/receiver.log', 'port': None
-        }
-        self._receiver = Receiver(**args)
-        # if self.arbiter.dispatcher.satellites:
-        #     some_receivers = False
-        #     for satellite in self.arbiter.dispatcher.satellites:
-        #         if satellite.get_my_type() == 'receiver':
-        #             # self.receiver.load_modules_manager(satellite.name)
-        #             self.receiver.modules_manager = \
-        #                 ModulesManager('receiver', self.receiver.sync_manager,
-        #                                max_queue_size=getattr(self, 'max_queue_size', 0))
-        #
-        #             self.receiver.new_conf = satellite.cfg
-        #             if self.receiver.new_conf:
-        #                 self.receiver.setup_new_conf()
+        self._receiver = None
+        for receiver in self.arbiter.dispatcher.receivers:
+            if self._receiver:
+                break
+            print("Found a receiver in the arbiter configuration: %s" % receiver.name)
 
-        # # Initialize a Broker daemon
+            args = {
+                'env_file': self.env_filename, 'daemon_name': receiver.get_name(),
+                'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
+                'config_file': None, 'debug': False, 'debug_file': None,
+                'local_log': "/tmp/%s.log" % receiver.get_name(), 'port': None
+            }
+            receiver_daemon = Receiver(**args)
+            receiver_daemon.load_modules_manager(receiver.get_name())
+            receiver_daemon.new_conf = receiver.cfg
+            if receiver_daemon.new_conf:
+                receiver_daemon.setup_new_conf()
+            self._receiver = receiver_daemon
+            print("Got a default receiver: %s" % self._receiver)
         # args = {
-        #     'env_file': self.env_filename, 'daemon_name': 'broker-test',
+        #     'env_file': self.env_filename, 'daemon_name': 'receiver-test',
         #     'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
         #     'config_file': None, 'debug': False, 'debug_file': None,
-        #     'local_log': '/tmp/broker.log', 'port': None
+        #     'local_log': '/tmp/receiver.log', 'port': None
         # }
-        # self._broker = Broker(**args)
-
-        # External commands manager default mode; default is the applyer (scheduler) mode
+        # self._receiver = Receiver(**args)
+        # # if self.arbiter.dispatcher.satellites:
+        # #     some_receivers = False
+        # #     for satellite in self.arbiter.dispatcher.satellites:
+        # #         if satellite.get_my_type() == 'receiver':
+        # #             # self.receiver.load_modules_manager(satellite.name)
+        # #             self.receiver.modules_manager = \
+        # #                 ModulesManager('receiver', self.receiver.sync_manager,
+        # #                                max_queue_size=getattr(self, 'max_queue_size', 0))
+        # #
+        # #             self.receiver.new_conf = satellite.cfg
+        # #             if self.receiver.new_conf:
+        # #                 self.receiver.setup_new_conf()
+        #
+        # # External commands manager default mode; default is the applyer (scheduler) mode
         self.ecm_mode = 'applyer'
 
         # Now we create an external commands manager in dispatcher mode
@@ -405,31 +431,31 @@ class AlignakTest(unittest2.TestCase):
         :return: None
         """
         if mysched is None:
-            mysched = self.schedulers['scheduler-master']
+            mysched = self._scheduler
 
         macroresolver = MacroResolver()
-        macroresolver.init(mysched.conf)
+        macroresolver.init(mysched.sched_daemon.conf)
 
         for num in range(count):
             for item in items:
                 (obj, exit_status, output) = item
                 if len(obj.checks_in_progress) == 0:
-                    for i in mysched.sched.recurrent_works:
-                        (name, fun, nb_ticks) = mysched.sched.recurrent_works[i]
+                    for i in mysched.recurrent_works:
+                        (name, fun, nb_ticks) = mysched.recurrent_works[i]
                         if nb_ticks == 1:
                             fun()
                 self.assertGreater(len(obj.checks_in_progress), 0)
-                chk = mysched.sched.checks[obj.checks_in_progress[0]]
+                chk = mysched.checks[obj.checks_in_progress[0]]
                 chk.set_type_active()
                 chk.check_time = time.time()
                 chk.wait_time = 0.0001
                 chk.last_poll = chk.check_time
                 chk.output = output
                 chk.exit_status = exit_status
-                mysched.sched.waiting_results.put(chk)
+                mysched.waiting_results.put(chk)
 
-            for i in mysched.sched.recurrent_works:
-                (name, fun, nb_ticks) = mysched.sched.recurrent_works[i]
+            for i in mysched.recurrent_works:
+                (name, fun, nb_ticks) = mysched.recurrent_works[i]
                 if nb_ticks == 1:
                     # print("Execute: %s" % fun)
                     fun()
@@ -478,21 +504,15 @@ class AlignakTest(unittest2.TestCase):
                 self.arbiter.broks = {}
                 self.arbiter.add(ext_cmd)
                 self.arbiter.push_external_commands_to_schedulers()
-                # Our broker
-                self._broker = self._scheduler.brokers['broker-master']
-                for brok in self.arbiter.broks:
-                    print("Brok: %s : %s" % (brok, self.arbiter.broks[brok]))
-                    self._broker['broks'][brok] = self.arbiter.broks[brok]
         if self.ecm_mode == 'receiver':
             res = self.ecr.resolve_command(ext_cmd)
             if res and run:
                 self._receiver.broks = {}
                 self._receiver.add(ext_cmd)
                 self._receiver.push_external_commands_to_schedulers()
-                # Our scheduler
-                self._scheduler = self.schedulers['scheduler-master'].sched
-                # Our broker
-                self._broker = self._scheduler.brokers['broker-master']
+                # # Our scheduler
+                # self._scheduler = self.schedulers['scheduler-master'].sched
+                # Give broks to our broker
                 for brok in self._receiver.broks:
                     print("Brok: %s : %s" % (brok, self._receiver.broks[brok]))
                     self._broker.broks[brok] = self._receiver.broks[brok]
@@ -570,9 +590,9 @@ class AlignakTest(unittest2.TestCase):
     def show_actions(self):
         """"Show the inner actions"""
         macroresolver = MacroResolver()
-        macroresolver.init(self._scheduler.conf)
+        macroresolver.init(self._scheduler_daemon.conf)
 
-        print "--- Scheduler: %s" % self._scheduler.get_name()
+        print "--- Scheduler: %s" % self._scheduler.sched_daemon.name
         print "--- actions <<<----------------------------------"
         actions = sorted(self._scheduler.actions.values(), key=lambda x: (x.t_to_go, x.creation_time))
         for action in actions:
@@ -598,7 +618,7 @@ class AlignakTest(unittest2.TestCase):
         Show checks from the scheduler
         :return:
         """
-        print "--- Scheduler: %s" % self._scheduler.get_name()
+        print "--- Scheduler: %s" % self._scheduler.sched_daemon.name
         print "--- checks <<<--------------------------------"
         checks = sorted(self._scheduler.checks.values(), key=lambda x: x.creation_time)
         for check in checks:
@@ -914,7 +934,8 @@ class AlignakTest(unittest2.TestCase):
         regex = re.compile(pattern)
 
         monitoring_logs = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        print("Broks: %s" % self._broker.broks)
+        for brok in self._broker.broks:
             if brok.type == 'monitoring_log':
                 data = unserialize(brok.data)
                 monitoring_logs.append((data['level'], data['message']))

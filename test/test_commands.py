@@ -64,7 +64,7 @@ class TestCommand(AlignakTest):
         assert self.conf_is_correct
 
         # Our scheduler
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
     def test_css_in_commands(self):
         """ Test CSS and HTML in command """
@@ -75,7 +75,7 @@ class TestCommand(AlignakTest):
     def test_semi_colon_in_commands(self):
         """Test semi-colon in commands """
         # Our scheduler
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # Get the hosts and services"
         host = self._sched.hosts.find_by_name("test_host_0")
@@ -96,7 +96,7 @@ class TestCommand(AlignakTest):
     def test_spaces_in_commands(self):
         """Test spaces in commands """
         # Our scheduler
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # Get the hosts and services"
         host = self._sched.hosts.find_by_name("test_host_0")

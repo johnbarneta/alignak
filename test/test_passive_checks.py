@@ -40,7 +40,7 @@ class TestPassiveChecks(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/cfg_passive_checks.cfg')
         assert self.conf_is_correct
-        self.sched_ = self.schedulers['scheduler-master'].sched
+        self.sched_ = self._scheduler
         
         # Check freshness on each scheduler tick
         self.sched_.update_recurrent_works_tick('check_freshness', 1)
@@ -68,7 +68,7 @@ class TestPassiveChecks(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/cfg_passive_checks.cfg')
         assert self.conf_is_correct
-        self.sched_ = self.schedulers['scheduler-master'].sched
+        self.sched_ = self._scheduler
 
         # Check freshness on each scheduler tick
         self.sched_.update_recurrent_works_tick('check_freshness', 1)
@@ -126,7 +126,7 @@ class TestPassiveChecks(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/cfg_passive_checks.cfg')
         assert self.conf_is_correct
-        self.sched_ = self.schedulers['scheduler-master'].sched
+        self.sched_ = self._scheduler
 
         # Check freshness on each scheduler tick
         self.sched_.update_recurrent_works_tick('check_freshness', 1)
@@ -211,7 +211,7 @@ class TestPassiveChecks(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/cfg_passive_checks.cfg')
         assert self.conf_is_correct
-        self.sched_ = self.schedulers['scheduler-master'].sched
+        self.sched_ = self._scheduler
 
         self.sched_.conf.check_host_freshness = False
         self.sched_.conf.check_service_freshness = False
@@ -291,7 +291,7 @@ class TestPassiveChecks(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/cfg_passive_checks.cfg')
         assert self.conf_is_correct
-        self.sched_ = self.schedulers['scheduler-master'].sched
+        self.sched_ = self._scheduler
 
         # Check freshness on each scheduler tick
         self.sched_.update_recurrent_works_tick('check_freshness', 1)
@@ -316,7 +316,7 @@ class TestPassiveChecks(AlignakTest):
         self.setup_with_file('cfg/cfg_passive_checks.cfg')
         self.clear_logs()
         assert self.conf_is_correct
-        self.sched_ = self.schedulers['scheduler-master'].sched
+        self.sched_ = self._scheduler
 
         host_b = self.sched_.hosts.find_by_name("test_host_B")
         assert "x" == host_b.freshness_state
@@ -418,7 +418,7 @@ class TestPassiveChecks(AlignakTest):
 
         # Now receive check_result (passive), so we must be outside of freshness_expired
         excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_B;0;Host is UP' % time.time()
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'UP' == host_b.state
         assert 'Host is UP' == host_b.output

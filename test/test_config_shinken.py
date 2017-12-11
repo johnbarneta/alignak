@@ -83,7 +83,7 @@ class TestConfig(AlignakTest):
         scheduler_link = self.arbiter.conf.schedulers.find_by_name('scheduler-master')
         assert scheduler_link is not None
         # Scheduler configuration is ok
-        assert self.schedulers['scheduler-master'].sched.conf.conf_is_correct
+        assert self._scheduler.conf.conf_is_correct
 
         # Broker, Poller, Reactionner named as in the configuration
         link = self.arbiter.conf.brokers.find_by_name('broker-master')

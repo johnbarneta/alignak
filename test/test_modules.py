@@ -96,7 +96,7 @@ class TestModules(AlignakTest):
         assert modules == ['Example']
 
         # No scheduler modules created
-        modules = [m.module_alias for m in self.schedulers['scheduler-master'].modules]
+        modules = [m.module_alias for m in self._scheduler_daemon.modules]
         assert modules == ['Example']
 
         # Loading module logs
@@ -221,7 +221,7 @@ class TestModules(AlignakTest):
         assert modules == ['Example']
 
         # No scheduler modules created
-        modules = [m.module_alias for m in self.schedulers['scheduler-master'].modules]
+        modules = [m.module_alias for m in self._scheduler_daemon.modules]
         assert modules == ['Example']
 
     def test_modulemanager(self):

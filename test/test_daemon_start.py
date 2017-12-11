@@ -133,7 +133,7 @@ class template_Daemon_Start():
         cls = self.daemon_cls
         args = {
             'env_file': alignak_environment,
-            'alignak_name': 'arbiter-master', 'daemon_name': None,
+            'alignak_name': 'my-alignak', 'daemon_name': self.daemon_name,
             'daemon_enabled': is_daemon, 'do_replace': do_replace,
             'config_file': None, 'debug': debug_file is not None, 'debug_file': debug_file,
             'local_log': None, 'port': None
@@ -196,8 +196,8 @@ class template_Daemon_Start():
                             debug_file='/tmp/debug-daemon.log')
         assert daemon.debug is True
         assert daemon.debug_file == '/tmp/debug-daemon.log'
-        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
-        assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('%s.pid' % daemon.name)
+        assert daemon.local_log == os.path.abspath('%s.log' % daemon.name)
 
         # Start the daemon
         self.start_daemon(daemon)
@@ -219,9 +219,9 @@ class template_Daemon_Start():
         # Start normally
         daemon = self.get_daemon(is_daemon=False, do_replace=False, free_port=False)
         assert daemon.debug_file == None
-        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('%s.pid' % daemon.name)
         save_pid_fname = daemon.pid_filename
-        assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
+        assert daemon.local_log == os.path.abspath('%s.log' % daemon.name)
 
         # Start the daemon
         self.start_daemon(daemon)
@@ -246,7 +246,7 @@ class template_Daemon_Start():
         print("Cwd: %s" % self._launch_dir)
         # Use the same pid file
         assert daemon.pid_filename == save_pid_fname
-        assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
+        assert daemon.local_log == os.path.abspath('%s.log' % daemon.name)
 
         # Update working dir to use temporary
         daemon.workdir = tempfile.mkdtemp()
@@ -270,8 +270,8 @@ class template_Daemon_Start():
         # # Start normally
         daemon = self.get_daemon(is_daemon=False, do_replace=False, free_port=False)
         assert daemon.debug_file == None
-        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
-        assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('%s.pid' % daemon.name)
+        assert daemon.local_log == os.path.abspath('%s.log' % daemon.name)
 
         # Setup logger
         daemon.setup_alignak_logger()
@@ -317,8 +317,8 @@ class template_Daemon_Start():
 
         # Start as a daemon and replace if still exists
         daemon = self.get_daemon(is_daemon=False, do_replace=True, free_port=False)
-        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
-        assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('%s.pid' % daemon.name)
+        assert daemon.local_log == os.path.abspath('%s.log' % daemon.name)
 
         # Update working dir to use temporary
         daemon.workdir = tempfile.mkdtemp()
@@ -375,8 +375,8 @@ class template_Daemon_Start():
 
         daemon = self.get_daemon()
         print("Daemon: %s" % daemon)
-        assert daemon.pid_filename == os.path.abspath('cfg/daemons/run/%s.pid' % daemon.name)
-        assert daemon.local_log == os.path.abspath('cfg/daemons/log/%s.log' % daemon.name)
+        assert daemon.pid_filename == os.path.abspath('%s.pid' % daemon.name)
+        assert daemon.local_log == os.path.abspath('%s.log' % daemon.name)
 
         # # Update log file information
         # daemon.logdir = os.path.abspath('.')
@@ -500,7 +500,7 @@ class Test_Arbiter_Start(template_Daemon_Start, AlignakTest):
         cls = self.daemon_cls
         args = {
             'env_file': alignak_environment,
-            'alignak_name': 'arbiter-master', 'daemon_name': None,
+            'alignak_name': 'arbiter-master', 'daemon_name': self.daemon_name,
             'daemon_enabled': is_daemon, 'do_replace': do_replace,
             'config_file': None, 'debug': True, 'debug_file': debug_file,
             'local_log': None, 'port': None,

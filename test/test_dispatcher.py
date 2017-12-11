@@ -61,7 +61,7 @@ class TestDispatcher(AlignakTest):
             assert 1 == len(satellite.cfg['schedulers']), 'must have 1 scheduler'
 
         # check if scheduler has right the 6 hosts
-        assert 6 == len(self.schedulers['scheduler-master'].sched.hosts)
+        assert 6 == len(self._scheduler.hosts)
 
     def test_simple_multi_schedulers(self):
         """ Simple test (one realm) but with multiple schedulers:
@@ -86,7 +86,7 @@ class TestDispatcher(AlignakTest):
         #     self.assertEqual(2, len(satellite.cfg['schedulers']),
         #                      'must have 2 schedulers in {0}'.format(satellite.get_name()))
 
-        assert 3 == len(self.schedulers['scheduler-master'].sched.hosts)
+        assert 3 == len(self._scheduler.hosts)
         assert 3 == len(self.schedulers['scheduler-master2'].sched.hosts)
 
     def test_simple_multi_pollers(self):
@@ -140,7 +140,7 @@ class TestDispatcher(AlignakTest):
         assert 2 == len(self.arbiter.dispatcher.schedulers)
         assert 8 == len(self.arbiter.dispatcher.satellites)
 
-        assert set([4, 6]) == set([len(self.schedulers['scheduler-master'].sched.hosts),
+        assert set([4, 6]) == set([len(self._scheduler.hosts),
                                    len(self.schedulers['realm2-scheduler-master'].sched.hosts)])
 
     def test_realms_with_sub(self):
@@ -304,8 +304,8 @@ class TestDispatcher(AlignakTest):
 
             self.setup_with_file('cfg/cfg_dispatcher_scheduler_spare.cfg')
             self.show_logs()
-            json_managed = {self.schedulers['scheduler-master'].conf.uuid:
-                            self.schedulers['scheduler-master'].conf.push_flavor}
+            json_managed = {self._scheduler_daemon.conf.uuid:
+                            self._scheduler_daemon.conf.push_flavor}
             for port in ['7768', '7772', '7771', '7769', '7773']:
                 mockreq.get('http://localhost:%s/what_i_managed' % port, json=json_managed)
             mockreq.get('http://localhost:8002/what_i_managed', json='{}')

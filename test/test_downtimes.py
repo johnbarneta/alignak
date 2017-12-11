@@ -69,7 +69,7 @@ class TestDowntime(AlignakTest):
         assert self.conf_is_correct
 
         # Our scheduler
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # Our broker
         self._broker = self._sched.brokers['broker-master']

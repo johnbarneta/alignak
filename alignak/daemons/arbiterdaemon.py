@@ -121,15 +121,12 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 "declared in the environment configuration file.")
             # Monitoring files in the arguments overload the ones defined
             # in the environment configuration file
-            self.monitoring_config_files = kwargs['monitoring_files']
+            self.monitoring_config_files.extend(kwargs['monitoring_files'])
             logger.warning("Got some configuration files: %s", self.monitoring_config_files)
         if not self.monitoring_config_files:
             sys.exit("The Alignak environment file is not existing "
                      "or do not define any monitoring configuration files. "
                      "The arbiter can not start correctly.")
-
-        print("Arbiter daemon '%s' has some monitoring configuration files: %s"
-              % (self.name, self.monitoring_config_files))
 
         self.verify_only = False
         if 'verify_only' in kwargs and kwargs['verify_only']:
@@ -258,10 +255,13 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             logger.info("Arbiter is in configuration check mode")
             logger.info("-----")
 
+        print("Arbiter daemon '%s' has some monitoring configuration files: %s"
+              % (self.name, self.monitoring_config_files))
+
         logger.info("Loading configuration from %s", self.monitoring_config_files)
         # REF: doc/alignak-conf-dispatching.png (1)
-        buf = self.conf.read_config(self.monitoring_config_files)
-        raw_objects = self.conf.read_config_buf(buf)
+        buffer = self.conf.read_config(self.monitoring_config_files)
+        raw_objects = self.conf.read_config_buf(buffer)
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
             err = "*** One or more problems were encountered while processing " \
@@ -272,8 +272,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             sys.exit(err)
 
         logger.info("I correctly loaded the configuration files")
-        self.alignak_name = getattr(self.conf, "alignak_name", self.name)
-        logger.info("Configuration for Alignak: %s", self.alignak_name)
 
         # Alignak global environment file
         # -------------------------------
@@ -288,7 +286,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             for daemon_type in ['arbiter', 'broker', 'scheduler',
                                 'poller', 'reactionner', 'receiver']:
                 if raw_objects[daemon_type]:
-                    logger.warning("Erasing daemons '%s' configuration found in cfg files",
+                    logger.warning("Erasing '%s' daemons configuration found in cfg files",
                                    daemon_type)
                 raw_objects[daemon_type] = []
             for daemon_name, daemon_cfg in self.alignak_env.get_daemons().items():
@@ -319,6 +317,9 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 else:
                     setattr(self.conf, key, value)
                 logger.info("- setting '%s' as %s", key, getattr(self.conf, key))
+
+        self.alignak_name = getattr(self.conf, "alignak_name", self.name)
+        logger.info("Configuration for Alignak: %s", self.alignak_name)
 
         # Create objects for our arbiters and modules
         self.conf.create_objects_for_type(raw_objects, 'arbiter')
@@ -400,10 +401,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         for daemon_type in ['scheduler', 'broker', 'poller', 'reactionner', 'receiver']:
             self.conf.create_objects_for_type(raw_objects, daemon_type)
         self.conf.create_objects(raw_objects)
-
-        for d in self.conf.schedulers:
-            print("Found sched in the configuration: %s / %s", d, type(d))
-            print(" - : %s" % d.__dict__)
 
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:

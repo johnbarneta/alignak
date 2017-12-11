@@ -147,7 +147,7 @@ class TestConfig(PropertiesTester, AlignakTest):
         ('daemon_mode', True),
         ('instance_name', ''),
         ('instance_id', ''),
-        ('name', ''),
+        ('name', 'Main configuration'),
         ('prefix', ''),
         ('alignak_name', ''),
         ('config_base_dir', ''),

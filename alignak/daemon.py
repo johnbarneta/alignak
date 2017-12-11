@@ -271,8 +271,6 @@ class Daemon(object):
 
         :param kwargs: list of key/value pairs from the daemon command line and configuration
         """
-        print("name: %s, kwargs: %s" % (name, kwargs))
-
         self.alignak_env = None
         self.monitoring_config_files = None
         self.modules_manager = None
@@ -302,8 +300,6 @@ class Daemon(object):
                         setattr(self, prop, copy(entry.default))
                     else:
                         setattr(self, prop, entry.pythonize(entry.default))
-
-        print("name: %s, self: %s" % (name, self))
 
         # Self daemon monitoring (cpu, memory)
         self.daemon_monitoring = False
@@ -340,6 +336,7 @@ class Daemon(object):
                 self.alignak_env.parse()
 
                 for prop, value in self.alignak_env.get_monitored_configuration().items():
+                    print(" found Alignak monitoring configuration parameter, %s = %s" % (prop, value))
                     self.pre_log.append(("DEBUG",
                                          " found Alignak monitoring "
                                          "configuration parameter, %s = %s" % (prop, value)))
@@ -385,7 +382,6 @@ class Daemon(object):
                 "should not be used anymore in favor the -e environment file parameter.",
                 DeprecationWarning, stacklevel=2)
 
-        print("Daemon command line parameters: %s" % kwargs)
         if 'daemon_enabled' in kwargs:
             self.daemon_enabled = kwargs['daemon_enabled']
         if 'is_daemon' in kwargs:
@@ -417,7 +413,6 @@ class Daemon(object):
             # Set absolute paths for
             if isinstance(properties[prop], PathProp):
                 setattr(self, prop, os.path.abspath(getattr(self, prop)))
-                print("Daemon '%s' %s path: %s" % (self.name, prop, getattr(self, prop)))
 
         # Default log file is stored in the log directory
         if not getattr(self, 'local_log', None):
@@ -426,6 +421,7 @@ class Daemon(object):
         if 'local_log' in kwargs and kwargs['local_log']:
             self.local_log = kwargs['local_log']
         self.log_filename = os.path.abspath(self.local_log)
+        print("Log: %s" % self.local_log)
         dirname = os.path.dirname(self.local_log)
         try:
             os.makedirs(dirname)
@@ -511,7 +507,7 @@ class Daemon(object):
         self.set_signal_handler()
 
     def __repr__(self):
-        return '<Daemon %r/%r, listening on %s:%s:%d />' % \
+        return '<Daemon %s/%s, listening on %s:%s:%d />' % \
                (self.type, self.name, self.scheme, self.host, self.port)
     __str__ = __repr__
 

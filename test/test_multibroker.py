@@ -41,7 +41,7 @@ class TestMultibroker(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/cfg_multi_broker_one_scheduler.cfg')
 
-        mysched = self.schedulers['scheduler-master']
+        mysched = self._scheduler_daemon
 
         assert 2 == len(mysched.sched.brokers)
 
@@ -93,14 +93,14 @@ class TestMultibroker(AlignakTest):
         self.setup_with_file('cfg/cfg_multi_broker_multi_scheduler.cfg')
 
         assert 2 == len(self.schedulers)
-        mysched1 = self.schedulers['scheduler-master']
+        mysched1 = self._scheduler_daemon
         mysched2 = self.schedulers['scheduler-master2']
 
-        if len(self.schedulers['scheduler-master'].sched.hosts) == 2:
-            mysched1 = self.schedulers['scheduler-master']
+        if len(self._scheduler.hosts) == 2:
+            mysched1 = self._scheduler_daemon
             mysched2 = self.schedulers['scheduler-master2']
         else:
-            mysched2 = self.schedulers['scheduler-master']
+            mysched2 = self._scheduler_daemon
             mysched1 = self.schedulers['scheduler-master2']
 
         host1 = mysched1.sched.hosts.find_by_name("test_host_0")
@@ -182,7 +182,7 @@ class TestMultibroker(AlignakTest):
         self.setup_with_file('cfg/cfg_multi_broker_multi_sched_realms.cfg')
 
         # test right brokers sent to right schedulers
-        smaster = self.schedulers['scheduler-master']
+        smaster = self._scheduler_daemon
         smaster_n = self.schedulers['scheduler-masterN']
         smaster_s = self.schedulers['scheduler-masterS']
 

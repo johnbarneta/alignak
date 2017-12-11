@@ -66,7 +66,7 @@ class TestMonitoringLogs(AlignakTest):
         assert self.conf_is_correct
 
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         host = self._sched.hosts.find_by_name("test_host_0")
         # Make notifications sent very quickly
@@ -132,7 +132,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         host = self._sched.hosts.find_by_name("test_host_0")
         host.checks_in_progress = []
@@ -257,7 +257,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs_disabled.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         host = self._sched.hosts.find_by_name("test_host_0")
         # Make notifications sent very quickly
@@ -305,7 +305,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs_disabled.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         host = self._sched.hosts.find_by_name("test_host_0")
         host.checks_in_progress = []
@@ -372,7 +372,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         now = int(time.time())
 
@@ -419,7 +419,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # Force the log passive checks configuration parameter
         self._sched.conf.log_passive_checks = log_passive_checks
@@ -520,7 +520,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # Force the log passive checks configuration parameter
         self._sched.conf.log_passive_checks = log_passive_checks
@@ -550,7 +550,7 @@ class TestMonitoringLogs(AlignakTest):
         # ---------------------------------------------
         # Receive passive host check Up
         excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;0;Host is UP' % time.time()
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'UP' == host.state
         assert 'Host is UP' == host.output
@@ -624,7 +624,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         now = int(time.time())
 
@@ -669,7 +669,7 @@ class TestMonitoringLogs(AlignakTest):
         self.setup_with_file('cfg/cfg_monitoring_logs_disabled.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # RESTART_PROGRAM
         excmd = '[%d] RESTART_PROGRAM' % int(time.time())
@@ -694,7 +694,7 @@ class TestMonitoringLogs(AlignakTest):
 
     def test_timeperiod_transition_log(self):
         self.setup_with_file('cfg/cfg_default.cfg')
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         tp = self._sched.timeperiods.find_by_name('24x7')
 

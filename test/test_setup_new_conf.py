@@ -45,7 +45,7 @@ class TestSetupNewConf(AlignakTest):
 
         args = {
             'env_file': self.env_filename,
-            'alignak_name': 'my-alignak', 'daemon_name': None,
+            'alignak_name': 'my-alignak', 'daemon_name': 'unset',
         }
         sched = schedulerdaemon(**args)
         sched.load_modules_manager('scheduler-name')
@@ -90,7 +90,7 @@ class TestSetupNewConf(AlignakTest):
 
         args = {
             'env_file': self.env_filename,
-            'alignak_name': 'my-alignak', 'daemon_name': None,
+            'alignak_name': 'my-alignak', 'daemon_name': 'unset',
         }
         receiv = receiverdaemon(**args)
         receiv.load_modules_manager('receiver-name')
@@ -98,7 +98,7 @@ class TestSetupNewConf(AlignakTest):
             assert 0 == len(receiv.modules)
 
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'receiver':
+            if satellite.type == 'receiver':
                 receiv.new_conf = satellite.cfg
         receiv.setup_new_conf()
         self.show_logs()
@@ -114,7 +114,7 @@ class TestSetupNewConf(AlignakTest):
         # send new conf, so it's the second time. This test the cleanup
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'receiver':
+            if satellite.type == 'receiver':
                 receiv.new_conf = satellite.cfg
         receiv.setup_new_conf()
         assert len(receiv.schedulers) == 1
@@ -132,7 +132,7 @@ class TestSetupNewConf(AlignakTest):
 
         args = {
             'env_file': self.env_filename,
-            'alignak_name': 'my-alignak', 'daemon_name': None,
+            'alignak_name': 'my-alignak', 'daemon_name': 'unset',
         }
         poller = pollerdaemon(**args)
         poller.load_modules_manager('poller-name')
@@ -140,7 +140,7 @@ class TestSetupNewConf(AlignakTest):
             assert 0 == len(poller.modules)
 
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'poller':
+            if satellite.type == 'poller':
                 poller.new_conf = satellite.cfg
         poller.setup_new_conf()
         assert 1 == len(poller.new_modules_conf)
@@ -151,7 +151,7 @@ class TestSetupNewConf(AlignakTest):
         # send new conf, so it's the second time. This test the cleanup
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'poller':
+            if satellite.type == 'poller':
                 poller.new_conf = satellite.cfg
         poller.setup_new_conf()
         assert len(poller.schedulers) == 1
@@ -169,7 +169,7 @@ class TestSetupNewConf(AlignakTest):
 
         args = {
             'env_file': self.env_filename,
-            'alignak_name': 'my-alignak', 'daemon_name': None,
+            'alignak_name': 'my-alignak', 'daemon_name': 'unset',
         }
         broker = brokerdaemon(**args)
         broker.load_modules_manager('broker-name')
@@ -177,7 +177,7 @@ class TestSetupNewConf(AlignakTest):
             assert 0 == len(broker.modules)
 
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'broker':
+            if satellite.type == 'broker':
                 broker.new_conf = satellite.cfg
         broker.setup_new_conf()
         assert 1 == len(broker.modules)
@@ -192,7 +192,7 @@ class TestSetupNewConf(AlignakTest):
         # send new conf, so it's the second time. This test the cleanup
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'broker':
+            if satellite.type == 'broker':
                 broker.new_conf = satellite.cfg
         broker.setup_new_conf()
         assert len(broker.schedulers) == 1
@@ -214,7 +214,7 @@ class TestSetupNewConf(AlignakTest):
 
         args = {
             'env_file': self.env_filename,
-            'alignak_name': 'my-alignak', 'daemon_name': None,
+            'alignak_name': 'my-alignak', 'daemon_name': 'unset',
         }
         reac = reactionnerdaemon(**args)
         reac.load_modules_manager('reactionner-name')
@@ -222,7 +222,7 @@ class TestSetupNewConf(AlignakTest):
             assert 0 == len(reac.modules)
 
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'reactionner':
+            if satellite.type == 'reactionner':
                 reac.new_conf = satellite.cfg
         reac.setup_new_conf()
         assert 1 == len(reac.new_modules_conf)
@@ -233,7 +233,7 @@ class TestSetupNewConf(AlignakTest):
         # send new conf, so it's the second time. This test the cleanup
         self.setup_with_file('cfg/cfg_default_with_modules.cfg')
         for satellite in self.arbiter.dispatcher.satellites:
-            if satellite.get_my_type() == 'reactionner':
+            if satellite.type == 'reactionner':
                 reac.new_conf = satellite.cfg
         reac.setup_new_conf()
         assert len(reac.schedulers) == 1

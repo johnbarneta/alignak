@@ -102,7 +102,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -290,7 +290,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -323,7 +323,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # An host...
         host = self._scheduler.hosts.find_by_name("test_host_0")
@@ -380,7 +380,7 @@ class TestExternalCommands(AlignakTest):
         :return: None 
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # A service...
         svc = self._scheduler.services.find_srv_by_name_and_hostname("test_host_0", "test_ok_0")
@@ -437,7 +437,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # A contact...
         host = self._scheduler.hosts.find_by_name("test_host_0")
@@ -491,7 +491,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # A TP...
         tp = self._scheduler.timeperiods.find_by_name("24x7")
@@ -623,7 +623,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # A TP...
         tp = self._scheduler.timeperiods.find_by_name("24x7")
@@ -772,7 +772,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # A TP...
         tp = self._scheduler.timeperiods.find_by_name("24x7")
@@ -841,7 +841,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -940,7 +940,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1039,7 +1039,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1129,7 +1129,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1168,7 +1168,7 @@ class TestExternalCommands(AlignakTest):
         # Receive passive service check Warning
         excmd = '[%d] PROCESS_SERVICE_CHECK_RESULT;' \
                 'test_host_0;test_ok_0;1;Service is WARNING' % now
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         self.scheduler_loop(1, [[host, 0, 'Host is UP']])
         assert 'WARNING' == svc.state
@@ -1178,14 +1178,14 @@ class TestExternalCommands(AlignakTest):
         # Acknowledge service
         excmd = '[%d] ACKNOWLEDGE_SVC_PROBLEM;' \
                 'test_host_0;test_ok_0;2;1;1;Big brother;Acknowledge service' % now
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'WARNING' == svc.state
         assert True == svc.problem_has_been_acknowledged
 
         # Remove acknowledge service
         excmd = '[%d] REMOVE_SVC_ACKNOWLEDGEMENT;test_host_0;test_ok_0' % now
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'WARNING' == svc.state
         assert False == svc.problem_has_been_acknowledged
@@ -1222,7 +1222,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1250,7 +1250,7 @@ class TestExternalCommands(AlignakTest):
             # ---------------------------------------------
             # Receive passive host check Host is up and alive
             excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;0;Host is alive' % now
-            self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+            self._scheduler.run_external_command(excmd)
             self.external_command_loop()
             assert 'UP' == host.state
             assert 'HARD' == host.state_type
@@ -1360,7 +1360,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1389,19 +1389,19 @@ class TestExternalCommands(AlignakTest):
             # ---------------------------------------------
             # Receive passive host check Down
             excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;2;Host is dead' % time.time()
-            self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+            self._scheduler.run_external_command(excmd)
             self.external_command_loop()
             assert 'DOWN' == host.state
             assert 'SOFT' == host.state_type
             assert 'Host is dead' == host.output
             excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;2;Host is dead' % time.time()
-            self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+            self._scheduler.run_external_command(excmd)
             self.external_command_loop()
             assert 'DOWN' == host.state
             assert 'SOFT' == host.state_type
             assert 'Host is dead' == host.output
             excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;2;Host is dead' % time.time()
-            self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+            self._scheduler.run_external_command(excmd)
             self.external_command_loop()
             assert 'DOWN' == host.state
             assert 'HARD' == host.state_type
@@ -1545,7 +1545,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1569,19 +1569,19 @@ class TestExternalCommands(AlignakTest):
         # ---------------------------------------------
         # Receive passive host check Down
         excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;2;Host is dead' % time.time()
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'DOWN' == host.state
         assert 'SOFT' == host.state_type
         assert 'Host is dead' == host.output
         excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;2;Host is dead' % time.time()
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'DOWN' == host.state
         assert 'SOFT' == host.state_type
         assert 'Host is dead' == host.output
         excmd = '[%d] PROCESS_HOST_CHECK_RESULT;test_host_0;2;Host is dead' % time.time()
-        self.schedulers['scheduler-master'].sched.run_external_command(excmd)
+        self._scheduler.run_external_command(excmd)
         self.external_command_loop()
         assert 'DOWN' == host.state
         assert 'HARD' == host.state_type
@@ -1712,7 +1712,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1812,7 +1812,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1909,7 +1909,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -1953,7 +1953,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -2110,7 +2110,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -2237,7 +2237,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         #  ---
         # External command: disable / enable freshness checks for all hosts
@@ -2258,7 +2258,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -2365,7 +2365,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -2461,7 +2461,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         #  ---
         # External command: disable / enable freshness checks for all services
@@ -2482,7 +2482,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         #  ---
         # External command: disable / enable performance data for all hosts
@@ -2600,7 +2600,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']
@@ -2667,7 +2667,7 @@ class TestExternalCommands(AlignakTest):
         :return: None
         """
         # Our scheduler
-        self._scheduler = self.schedulers['scheduler-master'].sched
+        self._scheduler = self._scheduler
 
         # Our broker
         self._broker = self._scheduler.brokers['broker-master']

@@ -61,7 +61,7 @@ class TestConfig(AlignakTest):
         scheduler_link = self.arbiter.conf.schedulers.find_by_name('scheduler-master')
         assert scheduler_link is not None
         # Scheduler configuration is ok
-        assert self.schedulers['scheduler-master'].sched.conf.conf_is_correct
+        assert self._scheduler.conf.conf_is_correct
 
         # Broker, Poller, Reactionner named as in the configuration
         link = self.arbiter.conf.brokers.find_by_name('broker-master')
@@ -101,7 +101,7 @@ class TestConfig(AlignakTest):
         scheduler_link = self.arbiter.conf.schedulers.find_by_name('scheduler-master')
         assert scheduler_link is not None
         # Scheduler configuration is ok
-        assert self.schedulers['scheduler-master'].sched.conf.conf_is_correct
+        assert self._scheduler.conf.conf_is_correct
 
         # Broker, Poller, Reactionner and Receiver named as in the configuration
         link = self.arbiter.conf.brokers.find_by_name('broker-master')
@@ -241,7 +241,7 @@ class TestConfig(AlignakTest):
         # No warning messages
         assert len(self.configuration_warnings) == 0
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name('spaced-host')
+        host = self._scheduler.hosts.find_by_name('spaced-host')
         assert host is not None
 
     def test_plus_syntax(self):
@@ -309,7 +309,7 @@ class TestConfig(AlignakTest):
         # No warning messages
         assert len(self.configuration_warnings) == 0
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             "myhost", "same_service")
         assert svc is not None
         assert 'general1' == svc.check_command.command.command_name
@@ -327,18 +327,18 @@ class TestConfig(AlignakTest):
         self.setup_with_file('cfg/config/alignak_service_not_hostname.cfg')
         assert self.conf_is_correct
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name("test_host_0")
+        host = self._scheduler.hosts.find_by_name("test_host_0")
         assert host is not None
         assert host.is_correct()
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             "test_host_0", "test_ok_0")
         # Check that the service is attached to test_host_0
         assert svc is not None
         assert svc.is_correct()
 
         # Check that the service is NOT attached to test_host_1
-        svc_not = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc_not = self._scheduler.services.find_srv_by_name_and_hostname(
             "test_host_1", "test_ok_0")
         assert svc_not is None
 
@@ -356,7 +356,7 @@ class TestConfig(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/config/alignak_service_description_inheritance.cfg')
         assert self.conf_is_correct
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # Service linked to an host
         svc = self._sched.services.find_srv_by_name_and_hostname("MYHOST", "SSH")
@@ -414,7 +414,7 @@ class TestConfig(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/config/alignak_service_description_inheritance.cfg')
         assert self.conf_is_correct
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
         # An host
         host = self._sched.hosts.find_by_name("test.host.A")
@@ -577,27 +577,7 @@ class TestConfig(AlignakTest):
         ))
 
         # Warning messages
-        assert len(self.configuration_warnings) == 11
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property failure_prediction_enabled type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property obsess_over_hosts type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property ochp_command type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property obsess_over_services type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property ocsp_command type because "
-            "it is not in Config object properties"
-        ))
+        assert len(self.configuration_warnings) == 6
         self.assert_any_cfg_log_match(re.escape(
             "use_regexp_matching parameter is not managed."
         ))
@@ -628,27 +608,7 @@ class TestConfig(AlignakTest):
         assert len(self.configuration_errors) == 0
 
         # Warning messages
-        assert len(self.configuration_warnings) == 11
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property failure_prediction_enabled type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property obsess_over_hosts type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property ochp_command type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property obsess_over_services type because "
-            "it is not in Config object properties"
-        ))
-        self.assert_any_cfg_log_match(re.escape(
-            "Guessing the property ocsp_command type because "
-            "it is not in Config object properties"
-        ))
+        assert len(self.configuration_warnings) == 6
         self.assert_any_cfg_log_match(re.escape(
             "failure_prediction_enabled parameter is not managed."
         ))
@@ -1049,7 +1009,7 @@ class TestConfig(AlignakTest):
         self.setup_with_file('cfg/cfg_default.cfg')
         assert self.conf_is_correct
 
-        contact = self.schedulers['scheduler-master'].sched.contacts.find_by_name('test_contact')
+        contact = self._scheduler.contacts.find_by_name('test_contact')
         assert contact.contact_name == 'test_contact'
         assert contact.email == 'nobody@localhost'
         assert contact.customs == {u'_VAR2': u'text', u'_VAR1': u'10'}
@@ -1063,16 +1023,16 @@ class TestConfig(AlignakTest):
         self.setup_with_file('cfg/config/host_config_all.cfg')
         assert self.conf_is_correct
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name('test_host_000')
+        host = self._scheduler.hosts.find_by_name('test_host_000')
         assert 'DOWN' == host.state
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name('test_host_001')
+        host = self._scheduler.hosts.find_by_name('test_host_001')
         assert 'UNREACHABLE' == host.state
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name('test_host_002')
+        host = self._scheduler.hosts.find_by_name('test_host_002')
         assert 'UP' == host.state
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name('test_host_003')
+        host = self._scheduler.hosts.find_by_name('test_host_003')
         assert 'UP' == host.state
 
     def test_config_hosts_names(self):
@@ -1107,7 +1067,7 @@ class TestConfig(AlignakTest):
         assert hst is not None, "host 'test_host_2;with_semicolon' not found"
         assert hst.is_correct(), "config of host '%s' is not true" % hst.get_name()
 
-        host = self.schedulers['scheduler-master'].sched.hosts.find_by_name(
+        host = self._scheduler.hosts.find_by_name(
             "test_host_2;with_semicolon")
         assert host is not None, "host 'test_host_2;with_semicolon' not found"
         assert 'UP' == host.state
@@ -1115,7 +1075,7 @@ class TestConfig(AlignakTest):
         # We can send a command by escaping the semicolon.
         command = r'[%lu] PROCESS_HOST_CHECK_RESULT;test_host_2\;with_semicolon;2;down' % (
             time.time())
-        self.schedulers['scheduler-master'].sched.run_external_command(command)
+        self._scheduler.run_external_command(command)
         self.external_command_loop()
         assert 'DOWN' == host.state
 
@@ -1150,23 +1110,23 @@ class TestConfig(AlignakTest):
         self.print_header()
         self.setup_with_file('cfg/config/service_config_all.cfg')
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             'test_host_0', 'test_service_0')
         assert 'WARNING' == svc.state
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             'test_host_0', 'test_service_1')
         assert 'UNKNOWN' == svc.state
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             'test_host_0', 'test_service_2')
         assert 'CRITICAL' == svc.state
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             'test_host_0', 'test_service_3')
         assert 'OK' == svc.state
 
-        svc = self.schedulers['scheduler-master'].sched.services.find_srv_by_name_and_hostname(
+        svc = self._scheduler.services.find_srv_by_name_and_hostname(
             'test_host_0', 'test_service_4')
         assert 'OK' == svc.state
 

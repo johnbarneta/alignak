@@ -187,9 +187,16 @@ class SatelliteLink(Item):
         self.fill_default()
 
         # Define the name property of the satellite from its type
-        # Hack for ascending compatibility
-        if not getattr(self, self.type + '_name', None):
-            setattr(self, self.type + '_name', self.name)
+        # Hack for ascending compatibility with Shinken configuration
+        try:
+            if self.type + '_name' in kwargs:
+                setattr(self, self.type + '_name', kwargs[self.type + '_name'])
+                setattr(self, 'name', kwargs[self.type + '_name'])
+            if not getattr(self, self.type + '_name', None):
+                setattr(self, self.type + '_name', self.name)
+        except AttributeError:
+            print("Got an unnamed %s: %s" % (self.my_type, self.__dict__))
+            # setattr(self, self.type + '_name', 'Unnamed %s' % self.my_type)
 
         self.arb_satmap = {
             'address': getattr(self, 'address', None),
@@ -204,6 +211,13 @@ class SatelliteLink(Item):
         return '<%s %s/%s, contact: %s />' % \
                (self.__class__.__name__, self.type, self.name, self.address)
     __str__ = __repr__
+
+    @property
+    def alias(self):
+        """Module name may be stored in an alias property
+        Stay compatible with older modules interface
+        """
+        return self.name
 
     def set_arbiter_satellitemap(self, satellitemap):
         """

@@ -98,8 +98,8 @@ class Alignak(BaseSatellite):
         self.must_run = True
 
         # Now the interface
-        self.uri = None
-        self.uri2 = None
+        # self.uri = None
+        # self.uri2 = None
 
         # stats part
         # --- copied from scheduler.py
@@ -115,10 +115,10 @@ class Alignak(BaseSatellite):
         # ---
 
         # And possible links for satellites
-        # from now only pollers
+        self.brokers = {}
         self.pollers = {}
         self.reactionners = {}
-        self.brokers = {}
+        self.receivers = {}
 
     def compensate_system_time_change(self, difference, timeperiods):  # pragma: no cover,
         # not with unit tests
@@ -128,7 +128,8 @@ class Alignak(BaseSatellite):
         :type difference: int
         :return: None
         """
-        logger.warning("A system time change of %d has been detected. Compensating...", difference)
+        super(BaseSatellite, self).compensate_system_time_change(difference, timeperiods)
+
         # We only need to change some value
         self.program_start = max(0, self.program_start + difference)
 
@@ -434,8 +435,8 @@ class Alignak(BaseSatellite):
 
             self.load_modules_manager(self.name)
 
-            self.uri = self.http_daemon.uri
-            logger.info("[Scheduler] General interface is at: %s", self.uri)
+            # self.uri = self.http_daemon.uri
+            # logger.info("[Scheduler] General interface is at: %s", self.uri)
 
             self.do_mainloop()
         except Exception:

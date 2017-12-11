@@ -802,7 +802,7 @@ class TestMacroResolverWithEnv(MacroResolverTester, AlignakTest):
         self.setup_with_file('cfg/cfg_macroresolver.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler
 
 
 class TestMacroResolverWithoutEnv(MacroResolverTester, AlignakTest):
@@ -812,4 +812,4 @@ class TestMacroResolverWithoutEnv(MacroResolverTester, AlignakTest):
         self.setup_with_file('cfg/cfg_macroresolver_environment.cfg')
         assert self.conf_is_correct
 
-        self._sched = self.schedulers['scheduler-master'].sched
+        self._sched = self._scheduler

@@ -87,6 +87,8 @@ class ArbiterLink(SatelliteLink):
         :return: dictionary with information of the satellite
         :rtype: dict
         """
+        for prop in self.__class__.properties:
+            print(prop)
         return {'name': self.name, 'port': self.port, 'address': self.address,
                 'instance_id': self.uuid,
                 'timeout': self.timeout, 'data_timeout': self.data_timeout,

@@ -2748,7 +2748,12 @@ class SchedulingItem(Item):  # pylint: disable=R0902
         :type triggers: alignak.objects.trigger.Triggers
         :return: None
         """
-        for trigger_id in self.triggers:
+        for t in triggers:
+            print("t: %s" % t)
+        for t in self.triggers:
+            print("self t: %s" % t)
+        for trigger_id in triggers:
+            print("trigger: %s" % trigger_id)
             trigger = triggers[trigger_id]
             try:
                 trigger.eval(self)

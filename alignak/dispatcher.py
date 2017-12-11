@@ -100,10 +100,12 @@ class Dispatcher:
         print("Dispatcher configuration packs:")
         for cfg_id in self.conf.packs:
             pack = self.conf.packs[cfg_id]
-            print("  . %s, flavor:%s, %s" %
+            print(" - %s, flavor:%s, %s" %
                   (pack.uuid,
                    getattr(pack, 'push_flavor', 'None'),
                    pack))
+        else:
+            print(" - None!")
 
         # Direct pointer to important elements for us
         self.realms = conf.realms
