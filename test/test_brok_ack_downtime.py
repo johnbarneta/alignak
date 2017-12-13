@@ -62,7 +62,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_ack_raise = []
         brok_ack_expire = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'acknowledge_raise':
                 brok_ack_raise.append(brok)
             elif brok.type == 'acknowledge_expire':
@@ -77,11 +77,11 @@ class TestBrokAckDowntime(AlignakTest):
         assert hdata['comment'] == 'normal process'
 
         # return service in OK mode, so the acknowledge will be removed by the scheduler
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
         self.scheduler_loop(2, [[host, 0, 'UP'], [svc, 0, 'OK']])
         brok_ack_raise = []
         brok_ack_expire = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'acknowledge_raise':
                 brok_ack_raise.append(brok)
             elif brok.type == 'acknowledge_expire':
@@ -103,7 +103,7 @@ class TestBrokAckDowntime(AlignakTest):
             format(int(now), 'test_host_0', 'test_ok_0', 2, 0, 1, 'darth vader', 'normal process')
         self._scheduler.run_external_command(cmd)
         self.scheduler_loop(1, [[host, 0, 'UP'], [svc, 2, 'CRITICAL']])
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
 
         cmd = "[{0}] REMOVE_SVC_ACKNOWLEDGEMENT;{1};{2}\n". \
             format(int(now), 'test_host_0', 'test_ok_0')
@@ -112,7 +112,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_ack_raise = []
         brok_ack_expire = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'acknowledge_raise':
                 brok_ack_raise.append(brok)
             elif brok.type == 'acknowledge_expire':
@@ -156,8 +156,7 @@ class TestBrokAckDowntime(AlignakTest):
         self.scheduler_loop(3, [[host, 2, 'DOWN'], [svc, 2, 'CRITICAL']])
 
         brok_ack = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'acknowledge_raise':
                 print("Brok: %s" % brok)
                 brok_ack.append(brok)
@@ -186,11 +185,11 @@ class TestBrokAckDowntime(AlignakTest):
         assert host_brok and service_brok
 
         # return host in UP mode, so the acknowledge will be removed by the scheduler
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
         self.scheduler_loop(2, [[host, 0, 'UP'], [svc, 0, 'OK']])
         brok_ack_raise = []
         brok_ack_expire = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'acknowledge_raise':
                 brok_ack_raise.append(brok)
             elif brok.type == 'acknowledge_expire':
@@ -229,7 +228,7 @@ class TestBrokAckDowntime(AlignakTest):
         self._scheduler.run_external_command(cmd)
         self.scheduler_loop(1, [[host, 2, 'DOWN'], [svc, 2, 'CRITICAL']])
 
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
 
         cmd = "[{0}] REMOVE_HOST_ACKNOWLEDGEMENT;{1}\n". \
             format(int(now), 'test_host_0')
@@ -238,7 +237,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_ack_raise = []
         brok_ack_expire = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'acknowledge_raise':
                 brok_ack_raise.append(brok)
             elif brok.type == 'acknowledge_expire':
@@ -286,8 +285,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -302,14 +300,13 @@ class TestBrokAckDowntime(AlignakTest):
         assert hdata['comment'] == 'downtime comment'
 
         # expire downtime
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
         time.sleep(5)
         self.scheduler_loop(2, [[host, 0, 'UP'], [svc, 2, 'CRITICAL']])
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -358,8 +355,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -373,14 +369,13 @@ class TestBrokAckDowntime(AlignakTest):
         assert 'service' not in hdata
 
         # expire downtime
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
         time.sleep(5)
         self.scheduler_loop(2, [[host, 0, 'UP'], [svc, 2, 'CRITICAL']])
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -427,8 +422,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -440,8 +434,7 @@ class TestBrokAckDowntime(AlignakTest):
         time.sleep(1)
         self.scheduler_loop(3, [[host, 0, 'UP'], [svc, 2, 'CRITICAL']])
 
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -478,8 +471,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -490,15 +482,14 @@ class TestBrokAckDowntime(AlignakTest):
 
         # External command: delete all host downtime
         now = int(time.time())
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
         cmd = '[%d] DEL_ALL_SVC_DOWNTIMES;test_host_0;test_ok_0' % now
         self._scheduler.run_external_command(cmd)
         self.external_command_loop()
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -535,8 +526,7 @@ class TestBrokAckDowntime(AlignakTest):
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':
@@ -547,15 +537,14 @@ class TestBrokAckDowntime(AlignakTest):
 
         # External command: delete all host downtime
         now = int(time.time())
-        self._scheduler.brokers['broker-master']['broks'] = {}
+        self._broker.broks = {}
         cmd = '[%d] DEL_ALL_HOST_DOWNTIMES;test_host_0' % now
         self._scheduler.run_external_command(cmd)
         self.external_command_loop()
 
         brok_downtime_raise = []
         brok_downtime_expire = []
-        for brok in self._scheduler.brokers['broker-master'][
-            'broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'downtime_raise':
                 brok_downtime_raise.append(brok)
             elif brok.type == 'downtime_expire':

@@ -54,8 +54,10 @@ class BrokerLink(SatelliteLink):
     my_type = 'broker'
     properties = SatelliteLink.properties.copy()
     properties.update({
-        # 'broker_name':
-        #     StringProp(fill_brok=['full_status'], to_send=True),
+        'type':
+            StringProp(default='broker', fill_brok=['full_status']),
+        'broker_name':
+            StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
             IntegerProp(default=7772, fill_brok=['full_status']),
     })
@@ -68,11 +70,21 @@ class BrokerLink(SatelliteLink):
         """
         self.realm.brokers.append(self)
 
+    def give_satellite_cfg(self):
+        """
+        Get configuration of the Reactionner satellite
+
+        :return: dictionary of link information
+        :rtype: dict
+        """
+        res = super(BrokerLink, self).give_satellite_cfg()
+        return res
+
 
 class BrokerLinks(SatelliteLinks):
     """
     Class to manage list of BrokerLink.
     BrokerLinks is used to regroup all brokers
     """
-    # name_property = "broker_name"
+    name_property = "broker_name"
     inner_class = BrokerLink

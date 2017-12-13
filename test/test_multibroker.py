@@ -115,8 +115,8 @@ class TestMultibroker(AlignakTest):
         host2.checks_in_progress = []
 
         # create broks in each scheduler
-        self.scheduler_loop(1, [[host1, 0, 'UP'], [svc1, 0, 'OK']], mysched1)
-        self.scheduler_loop(1, [[host2, 0, 'UP']], mysched2)
+        self.scheduler_loop(1, [[host1, 0, 'UP'], [svc1, 0, 'OK']], mysched1.sched)
+        self.scheduler_loop(1, [[host2, 0, 'UP']], mysched2.sched)
 
         assert 2 == len(mysched1.sched.brokers)
         assert 2 == len(mysched2.sched.brokers)

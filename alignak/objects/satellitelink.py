@@ -48,7 +48,7 @@ import logging
 import warnings
 
 from alignak.util import get_obj_name_two_args_and_void
-from alignak.misc.serialization import unserialize, AlignakClassLookupException
+from alignak.misc.serialization import unserialize, get_alignak_class, AlignakClassLookupException
 from alignak.objects.item import Item, Items
 from alignak.daemon import Daemon
 from alignak.property import BoolProp, IntegerProp, StringProp, ListProp, DictProp, AddrProp
@@ -64,10 +64,15 @@ class SatelliteLink(Item):
 
     """
 
+    # All the class properties that are 'to_send' are stored in the 'global'
+    # configuration to be pushed to the satellite when the configuration is dispatched
     properties = Item.properties.copy()
     # A SatelliteLink is and Item but it inherits from the properties of its related daemon
     properties.update(Daemon.properties.copy())
     properties.update({
+        # A satellite has the name of the daemon it is related to
+        'name':
+            StringProp(default='', fill_brok=['full_status']),
         # Address used by the other daemons
         'address':
             StringProp(default='localhost', fill_brok=['full_status']),
@@ -105,47 +110,6 @@ class SatelliteLink(Item):
         'passive':
             BoolProp(default=False, fill_brok=['full_status'], to_send=True),
     })
-    # properties.update({
-    #     'type':
-    #         StringProp(default='', fill_brok=['full_status']),
-    #     'name':
-    #         StringProp(default='', fill_brok=['full_status']),
-    #     'address':
-    #         StringProp(default='localhost', fill_brok=['full_status']),
-    #     'timeout':
-    #         IntegerProp(default=3, fill_brok=['full_status']),
-    #     'data_timeout':
-    #         IntegerProp(default=120, fill_brok=['full_status']),
-    #     'check_interval':
-    #         IntegerProp(default=60, fill_brok=['full_status']),
-    #     'max_check_attempts':
-    #         IntegerProp(default=3, fill_brok=['full_status']),
-    #     'spare':
-    #         BoolProp(default=False, fill_brok=['full_status']),
-    #     'manage_sub_realms':
-    #         BoolProp(default=False, fill_brok=['full_status']),
-    #     'manage_arbiters':
-    #         BoolProp(default=False, fill_brok=['full_status'], to_send=True),
-    #     'modules':
-    #         ListProp(default=[''], to_send=True, split_on_coma=True),
-    #     'polling_interval':
-    #         IntegerProp(default=1, fill_brok=['full_status'], to_send=True),
-    #     'use_timezone':
-    #         StringProp(default='NOTSET', to_send=True),
-    #     'realm':
-    #         StringProp(default='', fill_brok=['full_status'],
-    #                    brok_transformation=get_obj_name_two_args_and_void),
-    #     'realm_name':
-    #         StringProp(default=''),
-    #     'satellitemap':
-    #         DictProp(default={}, elts_prop=AddrProp, to_send=True, override=True),
-    #     'use_ssl':
-    #         BoolProp(default=False, fill_brok=['full_status']),
-    #     'hard_ssl_name_check':
-    #         BoolProp(default=True, fill_brok=['full_status']),
-    #     'passive':
-    #         BoolProp(default=False, fill_brok=['full_status'], to_send=True),
-    # })
 
     running_properties = Item.running_properties.copy()
     running_properties.update({
@@ -181,26 +145,32 @@ class SatelliteLink(Item):
             BoolProp(default=False),
     })
 
-    def __init__(self, *args, **kwargs):
-        super(SatelliteLink, self).__init__(*args, **kwargs)
+    def __init__(self, params=None, parsing=True):
+        super(SatelliteLink, self).__init__(params, parsing)
 
         self.fill_default()
 
-        # Define the name property of the satellite from its type
         # Hack for ascending compatibility with Shinken configuration
         try:
-            if self.type + '_name' in kwargs:
-                setattr(self, self.type + '_name', kwargs[self.type + '_name'])
-                setattr(self, 'name', kwargs[self.type + '_name'])
-            if not getattr(self, self.type + '_name', None):
-                setattr(self, self.type + '_name', self.name)
-        except AttributeError:
-            print("Got an unnamed %s: %s" % (self.my_type, self.__dict__))
-            # setattr(self, self.type + '_name', 'Unnamed %s' % self.my_type)
+            # We received a configuration with a 'name' property...
+            if self.name:
+                setattr(self, "%s_name" % self.type, self.name)
+            else:
+                # We received a configuration without a 'name' property... old form!
+                setattr(self, 'name', getattr(self, "%s_name" % self.type))
+        except KeyError as exp:
+            print("We got an unnamed %s: %s" % (self.my_type, self.__dict__))
+            setattr(self, 'name', getattr(self, "%s_name" % self.type))
 
         self.arb_satmap = {
             'address': getattr(self, 'address', None),
             'port': getattr(self, 'port', None)
+        }
+
+        self.cfg = {
+            'self_conf': {},
+            'schedulers': {},
+            'arbiters': {}
         }
 
         # Create the link connection
@@ -208,16 +178,35 @@ class SatelliteLink(Item):
             self.create_connection()
 
     def __repr__(self):
-        return '<%s %s/%s, contact: %s />' % \
-               (self.__class__.__name__, self.type, self.name, self.address)
+        return '<%r (%s) %r/%r, uri: %r />' % (self.__class__.__name__, self.uuid,
+                                               self.type, self.name, self.uri)
     __str__ = __repr__
 
-    @property
-    def alias(self):
-        """Module name may be stored in an alias property
-        Stay compatible with older modules interface
+    def get_name(self):
+        """Get the name of the SatelliteLink
+
+        Return the 'name' property if it exists, else the 'daemon_name' property (old form)
+
+        :return: the name of the daemon which the SatelliteLink is used for
+        :rtype: str
         """
-        return self.name
+        warnings.warn("Getting the 'name' of %s class with the 'get_name' function "
+                      "should be replaced with the name property" % self.__class__,
+                      DeprecationWarning, stacklevel=2)
+        return self.name if self.name else "Unnamed %s" % self.type
+        # return getattr(self, "%s_name" % self.type)
+
+    @staticmethod
+    def get_a_satellite_link(sat_type, sat_dict):
+        """Get a SatelliteLink object for a given satellite type and a dictionary
+
+        :param sat_type: type of satellite
+        :param sat_dict: satellite configuration data
+        :return:
+        """
+        cls = get_alignak_class('alignak.objects.%slink.%sLink'
+                                % (sat_type, sat_type.capitalize()))
+        return cls(sat_dict)
 
     def set_arbiter_satellitemap(self, satellitemap):
         """
@@ -360,21 +349,27 @@ class SatelliteLink(Item):
         if self.attempt == self.max_check_attempts:
             self.set_dead()
 
-    def update_infos(self, now):
+    def update_infos(self, now, test=False):
         """Update satellite info each self.check_interval seconds
         so we smooth arbiter actions for just useful actions.
         Create update Brok
+
+        If test is True, do not really ping the daemon
 
         :return: None
         """
         # First look if it's not too early to ping
         if (now - self.last_check) < self.check_interval:
+            print("%s - too early to ping!" % self)
             return False
 
         self.last_check = now
 
         # We ping and update the managed list
-        self.ping()
+        if test:
+            self.set_alive()
+        else:
+            self.ping()
         if not self.alive:
             logger.info("Not alive for ping: %s", self.get_name())
             return False
@@ -384,23 +379,21 @@ class SatelliteLink(Item):
                         self.get_name(), self.attempt, self.max_check_attempts)
             return False
 
-        self.update_managed_conf()
+        if test:
+            self.managed_confs = {}
+            if getattr(self, 'schedulers', None):
+                # I am a simple satellite
+                for (key, val) in self.schedulers.iteritems():
+                    self.managed_confs[key] = val['push_flavor']
+            elif getattr(self, 'conf', None):
+                # I am a scheduler
+                return {self.conf.uuid: self.conf.push_flavor}
+        else:
+            self.update_managed_conf()
 
         # Update the state of this element
         brok = self.get_update_status_brok()
         self.broks.append(brok)
-
-    def known_conf_managed_push(self, cfg_id, push_flavor):
-        """The elements just got a new conf_id, we put it in our list
-         because maybe the satellite is too busy to answer now
-
-        :param cfg_id: config id
-        :type cfg_id: int
-        :param push_flavor: push_flavor we pushed earlier to the satellite
-        :type push_flavor: int
-        :return: None
-        """
-        self.managed_confs[cfg_id] = push_flavor
 
     def ping(self):
         """Send a HTTP request to the satellite (GET /ping)
@@ -428,7 +421,7 @@ class SatelliteLink(Item):
 
             # This sould never happen! Except is the source code got modified!
             logger.warning("[%s] I responded '%s' to ping! WTF is it?", self.get_name(), res)
-            self.add_failed_check_attempt('pinog / NOT pong')
+            self.add_failed_check_attempt('ping / NOT pong')
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             logger.warning("[%s] Connection error when pinging: %s",
                            self.get_name(), str(exp))
@@ -697,51 +690,55 @@ class SatelliteLink(Item):
         return []
 
     def prepare_for_conf(self):
-        """Init cfg dict attribute with __class__.properties
-        and extra __class__ attribute
-        (like __init__ could do with an object)
+        """Initialize the pushed configuration dictionary
+        with the inner properties that are to be propagated to the satellite link.
 
         :return: None
         """
-        self.cfg = {'global': {}, 'schedulers': {}, 'arbiters': {}}
+        print("- preparing: %s" % self)
+        self.cfg = {
+            'self_conf': {},
+            'schedulers': {},
+            'arbiters': {}
+        }
+
+        # All the satellite link class properties that are 'to_send' are stored in the 'global'
+        # configuration to be pushed to the satellite when the configuration is dispatched
         properties = self.__class__.properties
         for prop, entry in properties.items():
-            if entry.to_send:
-                self.cfg['global'][prop] = getattr(self, prop)
+            # Do not care of the to_send attribute... send all properties as such each
+            # satellite link will get all its properties in the received configuration.
+            # if entry.to_send:
+            #     self.cfg['global'][prop] = getattr(self, prop)
+            if hasattr(self, prop):
+                self.cfg['self_conf'][prop] = getattr(self, prop)
 
-        cls = self.__class__
-        # Also add global values
-        self.cfg['global']['statsd_host'] = cls.statsd_host
-        self.cfg['global']['statsd_port'] = cls.statsd_port
-        self.cfg['global']['statsd_prefix'] = cls.statsd_prefix
-        self.cfg['global']['statsd_enabled'] = cls.statsd_enabled
-
-    def add_global_conf_parameters(self, params):
-        """Add some extra params in cfg dict attribute.
-        Some attributes are in the global configuration
-
-        :param params: dict to update cfg with
-        :type params: dict
-        :return: None
-        """
-        for prop in params:
-            self.cfg['global'][prop] = params[prop]
+    # def add_global_conf_parameters(self, params):
+    #     """Add some extra params in cfg dict attribute.
+    #     Some attributes are in the global configuration
+    #
+    #     :param params: dict to update cfg with
+    #     :type params: dict
+    #     :return: None
+    #     """
+    #     for prop in params:
+    #         self.cfg['self_conf'][prop] = params[prop]
 
     def give_satellite_cfg(self):
-        """Get a configuration for this satellite.
-        Not used by Scheduler and Arbiter (overridden)
+        """Get the default information for a satellite.
 
-        :return: Configuration for satellite
+        Overriden by the specific satelllites links
+
+        :return: dictionary of link information
         :rtype: dict
         """
         return {'name': self.name, 'port': self.port, 'address': self.address,
                 'instance_id': self.uuid,
                 'use_ssl': self.use_ssl, 'hard_ssl_name_check': self.hard_ssl_name_check,
                 'timeout': self.timeout, 'data_timeout': self.data_timeout,
-                'max_check_attempts': self.max_check_attempts,
-                'active': True, 'passive': self.passive,
-                'poller_tags': getattr(self, 'poller_tags', []),
-                'reactionner_tags': getattr(self, 'reactionner_tags', [])
+                'active': True, 'reachable': True,
+                'current_attempt': self.attempt,
+                'max_check_attempts': self.max_check_attempts
                 }
 
 
@@ -752,7 +749,7 @@ class SatelliteLinks(Items):
     inner_class = SatelliteLink
 
     def __repr__(self):
-        return '<%s %d elements: %s/>' % \
+        return '<%r %d elements: %r/>' % \
                (self.__class__.__name__, len(self), ', '.join([s.name for s in self]))
     __str__ = __repr__
 

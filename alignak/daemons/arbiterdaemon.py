@@ -59,6 +59,7 @@
 """
 This module provide Arbiter class used to run a arbiter daemon
 """
+import os
 import logging
 import sys
 import time
@@ -99,7 +100,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             IntegerProp(default=7770)
     })
 
-    # pylint: disable=too-many-arguments
     def __init__(self, **kwargs):
         """Arbiter daemon initialisation
 
@@ -262,6 +262,11 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # REF: doc/alignak-conf-dispatching.png (1)
         buffer = self.conf.read_config(self.monitoring_config_files)
         raw_objects = self.conf.read_config_buf(buffer)
+
+        # Update configuration with the environment file path
+        self.conf.config_base_dir = os.path.dirname(self.env_filename)
+        self.conf.main_config_file = os.path.abspath(self.env_filename)
+
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
             err = "*** One or more problems were encountered while processing " \
@@ -283,20 +288,30 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         if self.alignak_env:
             # Get all the Alignak dameons from the configuration
             logger.info("Getting daemons configuration...")
-            for daemon_type in ['arbiter', 'broker', 'scheduler',
-                                'poller', 'reactionner', 'receiver']:
-                if raw_objects[daemon_type]:
-                    logger.warning("Erasing '%s' daemons configuration found in cfg files",
-                                   daemon_type)
-                raw_objects[daemon_type] = []
             for daemon_name, daemon_cfg in self.alignak_env.get_daemons().items():
                 logger.debug("Got a daemon configuration for %s", daemon_name)
                 if 'type' not in daemon_cfg:
                     self.conf.add_error("Ignoring daemon with an unknown type: %s" % daemon_name)
                     continue
-                logger.info("Got a daemon configuration for a %s named %s",
-                            daemon_cfg['type'], daemon_cfg['name'])
-                raw_objects[daemon_cfg['type']].append(daemon_cfg)
+                logger.info("- got a %s named %s", daemon_cfg['type'], daemon_cfg['name'])
+
+                # If this daemon is found in the former Cfg files, replace the former configuration
+                new_cfg_daemons = []
+                for cfg_daemon in raw_objects[daemon_cfg['type']]:
+                    if cfg_daemon.get('name', 'unset') == daemon_cfg['name'] \
+                            or cfg_daemon.get("%s_name" % daemon_cfg['type'], 'unset') \
+                                    == [daemon_cfg['name']]:
+                        logger.info("  updating daemon Cfg file configuration")
+                    else:
+                        new_cfg_daemons.append(cfg_daemon)
+                new_cfg_daemons.append(daemon_cfg)
+                raw_objects[daemon_cfg['type']] = new_cfg_daemons
+
+            logger.warning("Daemons configuration:")
+            for daemon_type in ['arbiter', 'scheduler', 'broker',
+                                'poller', 'reactionner', 'receiver']:
+                for cfg_daemon in raw_objects[daemon_type]:
+                    logger.warning(" - %s / %s", daemon_type, cfg_daemon)
 
             # and then get all modules from the configuration
             logger.info("Getting modules configuration...")
@@ -322,16 +337,13 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         logger.info("Configuration for Alignak: %s", self.alignak_name)
 
         # Create objects for our arbiters and modules
-        self.conf.create_objects_for_type(raw_objects, 'arbiter')
-        self.conf.create_objects_for_type(raw_objects, 'module')
+        self.conf.early_create_objects(raw_objects)
 
         self.conf.early_arbiter_linking()
 
         # Search which arbiter I am in the arbiter links list
         for lnk_arbiter in self.conf.arbiters:
-            logger.info("I have arbiter links in my configuration: %s", lnk_arbiter.name)
-            print("Found arbiter link in the configuration: %s / %s", lnk_arbiter.name, lnk_arbiter)
-            print("I am: %s", self.name)
+            logger.info("I have an arbiter in my configuration: %s", lnk_arbiter.name)
             if lnk_arbiter.name != self.name:
                 # Arbiter is not me!
                 logger.info("I found another arbiter in my configuration: %s", lnk_arbiter.name)
@@ -340,6 +352,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 continue
 
             logger.info("I found myself in the configuration: %s", lnk_arbiter.name)
+            print("I found myself in the configuration: %s" % lnk_arbiter.name)
             self.link_to_myself = lnk_arbiter
             # Set myself as alive ;)
             self.link_to_myself.alive = True
@@ -373,6 +386,16 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         # Whether I am a spare arbiter, I will parse the whole configuration. This may be useful
         # if the master fails before sending its configuration to me!
+        # An Arbiter which is not a master one will not go further...
+        # todo: is it a good choice?:
+        # 1/ why reading all the configuration files stuff?
+        # 2/ why not loading configuration data from the modules?
+        # -> Indeed, here, only the main configuration has been fetched by the arbiter.
+        # Perharps, loading only the alignak.ini would be enough for a spare arbiter.
+        # And it will make it simpler to configure...
+        if not self.is_master:
+            logger.info("I am not the master arbiter, I stop parsing the configuration")
+            return
 
         # Ok it's time to load the module manager now!
         self.load_modules_manager(self.link_to_myself.name)
@@ -381,10 +404,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # we will *start* these instances after we have been daemonized (if requested)
         # todo: use self.modules, no? And not the modules of my link ...
         self.do_load_modules(self.link_to_myself.modules)
-
-        if not self.is_master:
-            logger.info("I am not the master arbiter, I stop parsing the configuration")
-            return
 
         # Call modules that manage this read configuration pass
         self.hook_point('read_configuration')
@@ -397,10 +416,11 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # (example modules: alignak_backend)
         self.load_modules_configuration_objects(raw_objects)
 
-        # Resume standard operations and create objects for all the configuration
-        for daemon_type in ['scheduler', 'broker', 'poller', 'reactionner', 'receiver']:
-            self.conf.create_objects_for_type(raw_objects, daemon_type)
+        # Create objects for all the configuration
+        # for daemon_type in ['scheduler', 'broker', 'poller', 'reactionner', 'receiver']:
+        #     self.conf.create_objects_for_type(raw_objects, daemon_type)
         self.conf.create_objects(raw_objects)
+        print("Triggers: %s" % (getattr(self.conf, 'triggers')))
 
         # Maybe conf is already invalid
         if not self.conf.conf_is_correct:
@@ -464,17 +484,13 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # And link them
         self.conf.create_business_rules_dependencies()
 
-        # Warn about useless parameters in Alignak
-        if self.verify_only:
-            self.conf.notice_about_useless_parameters()
-
         # Manage all post-conf modules
         self.hook_point('late_configuration')
 
         # Configuration is correct?
         self.conf.is_correct()
 
-        # Maybe some elements were not wrong, so we must clean if possible
+        # Clean objects of temporary/unnecessary attributes for live work:
         self.conf.clean()
 
         # Dump Alignak macros
@@ -496,8 +512,10 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             sys.exit(err)
 
         # REF: doc/alignak-conf-dispatching.png (2)
-        logger.info("Splitting hosts and services into parts")
-        self.confs = self.conf.cut_into_parts()
+        logger.info("Splitting configuration into parts")
+        self.conf.cut_into_parts()
+        # Here, the self.conf.parts exist
+        # And the realms have some 'packs'
 
         # The conf can be incorrect here if the cut into parts see errors like
         # a realm with hosts and no schedulers for it
@@ -508,18 +526,15 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             self.conf.show_errors()
             sys.exit(err)
 
-        # Clean objects of temporary/unnecessary attributes for live work:
-        self.conf.clean()
-
         logger.info("Things look okay - "
                     "No serious problems were detected during the pre-flight check")
 
         # Exit if we are just here for config checking
         if self.verify_only:
+            logger.info("Arbiter checked the configuration")
             if self.conf.missing_daemons:
                 logger.warning("Some missing daemons were detected in the parsed configuration.")
 
-            logger.info("Arbiter checked the configuration")
             # Display found warnings and errors
             self.conf.show_errors()
             sys.exit(0)
@@ -543,6 +558,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # before being sent, like realms for hosts for example
         # BEWARE: after the cutting part, because we stringify some properties
         self.conf.prepare_for_sending()
+        # Here, the self.conf.spare_arbiter_conf exist and each realm has its configuration
 
         # Ignore daemon configuration parameters (port, log, ...) in the monitoring configuration
         # It's better to use daemon default parameters rather than those found in the monitoring
@@ -832,8 +848,8 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             self.new_conf = None
             for lnk_arbiter in self.conf.arbiters:
                 logger.info("I have arbiter links in my configuration: %s", lnk_arbiter.name)
-                print(
-                "Found arbiter link in the configuration: %s / %s", lnk_arbiter.name, lnk_arbiter)
+                print("Found arbiter link in the configuration: %s / %s"
+                      % (lnk_arbiter.name, lnk_arbiter))
                 print("I am: %s", self.name)
                 if lnk_arbiter.name != self.name:
                     # Arbiter is not me!

@@ -59,6 +59,7 @@ class TestRealms(AlignakTest):
     """
     def test_no_defined_realm(self):
         """ Test configuration with no defined realm
+
         Load a configuration with no realm defined:
         - Alignak defines a default realm
         - All hosts with no realm defined are in this default realm
@@ -66,7 +67,7 @@ class TestRealms(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/realms/no_defined_realms.cfg')
+        self.setup_with_file('cfg/realms/no_defined_realms.cfg', 'cfg/realms/no_defined_realms.ini')
         assert self.conf_is_correct
         self.show_logs()
 

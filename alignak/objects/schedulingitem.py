@@ -243,7 +243,7 @@ class SchedulingItem(Item):  # pylint: disable=R0902
             IntegerProp(default=5),
 
         'realm':
-            StringProp(default='', fill_brok=['full_status'], conf_send_preparation=get_obj_name),
+            StringProp(default='', fill_brok=['full_status']),
     })
 
     running_properties = Item.running_properties.copy()

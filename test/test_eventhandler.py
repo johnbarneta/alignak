@@ -134,7 +134,7 @@ class TestEventhandler(AlignakTest):
         self.assert_actions_match(4, 'test_global_host_eventhandler.pl UP SOFT', 'command')
 
         monitoring_logs = []
-        for brok in self._sched.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'monitoring_log':
                 data = unserialize(brok.data)
                 monitoring_logs.append((data['level'], data['message']))

@@ -19,7 +19,7 @@
 # along with Alignak.  If not, see <http://www.gnu.org/licenses/>.
 #
 """
-This file test the dispatcher (distribute configuration to satellites)
+This file tests the dispatcher (distribute configuration to satellites)
 """
 
 import time
@@ -32,7 +32,7 @@ from alignak.misc.serialization import unserialize
 
 class TestDispatcher(AlignakTest):
     """
-    This class test the dispatcher  (distribute configuration to satellites)
+    This class tests the dispatcher (distribute configuration to satellites)
     """
 
     def test_simple(self):
@@ -49,16 +49,20 @@ class TestDispatcher(AlignakTest):
         """
         self.print_header()
         self.setup_with_file('cfg/cfg_dispatcher_simple.cfg')
-        assert 1 == len(self.arbiter.dispatcher.realms)
-        for realm in self.arbiter.dispatcher.realms:
-            assert 1 == len(realm.confs)
-            for cfg in realm.confs.values():
+        assert 1 == len(self.arbiter.dispatcher.conf.realms)
+        for realm in self.arbiter.dispatcher.conf.realms:
+            assert 1 == len(realm.parts)
+            for cfg in realm.parts.values():
                 assert cfg.is_assigned
         assert 1 == len(self.arbiter.dispatcher.schedulers)
-        assert 4 == len(self.arbiter.dispatcher.satellites)
         for satellite in self.arbiter.dispatcher.satellites:
+            print("Satellite: %s" % satellite)
+            # All the satellites must have a scheduler link, except the scheduler !
+            if satellite.type == 'scheduler':
+                continue
             assert {} != satellite.cfg['schedulers'], satellite.get_name()
             assert 1 == len(satellite.cfg['schedulers']), 'must have 1 scheduler'
+        assert 4 == len(self.arbiter.dispatcher.satellites)
 
         # check if scheduler has right the 6 hosts
         assert 6 == len(self._scheduler.hosts)
@@ -74,10 +78,10 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.setup_with_file('cfg/cfg_dispatcher_simple_multi_schedulers.cfg')
-        assert 1 == len(self.arbiter.dispatcher.realms)
-        for realm in self.arbiter.dispatcher.realms:
-            assert 2 == len(realm.confs)
-            for cfg in realm.confs.values():
+        assert 1 == len(self.arbiter.dispatcher.conf.realms)
+        for realm in self.arbiter.dispatcher.conf.realms:
+            assert 2 == len(realm.parts)
+            for cfg in realm.parts.values():
                 assert cfg.is_assigned
         assert 2 == len(self.arbiter.dispatcher.schedulers)
         assert 4 == len(self.arbiter.dispatcher.satellites)
@@ -100,10 +104,10 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.setup_with_file('cfg/cfg_dispatcher_simple_multi_pollers.cfg')
-        assert 1 == len(self.arbiter.dispatcher.realms)
-        for realm in self.arbiter.dispatcher.realms:
-            assert 1 == len(realm.confs)
-            for cfg in realm.confs.values():
+        assert 1 == len(self.arbiter.dispatcher.conf.realms)
+        for realm in self.arbiter.dispatcher.conf.realms:
+            assert 1 == len(realm.parts)
+            for cfg in realm.parts.values():
                 assert cfg.is_assigned
         assert 1 == len(self.arbiter.dispatcher.schedulers)
         assert 5 == len(self.arbiter.dispatcher.satellites)
@@ -132,12 +136,15 @@ class TestDispatcher(AlignakTest):
         """
         self.print_header()
         self.setup_with_file('cfg/cfg_dispatcher_realm.cfg', 'cfg/dispatcher/alignak-realm2.ini')
-        assert 2 == len(self.arbiter.dispatcher.realms)
-        for realm in self.arbiter.dispatcher.realms:
-            assert 1 == len(realm.confs)
-            for cfg in realm.confs.values():
+        assert 2 == len(self.arbiter.dispatcher.conf.realms)
+        for realm in self.arbiter.dispatcher.conf.realms:
+            assert 1 == len(realm.parts)
+            for cfg in realm.parts.values():
                 assert cfg.is_assigned
         assert 2 == len(self.arbiter.dispatcher.schedulers)
+        print("Satellites: %s" % self.arbiter.dispatcher.satellites)
+        for sat in self.arbiter.dispatcher.satellites:
+            print("- %s" % sat)
         assert 8 == len(self.arbiter.dispatcher.satellites)
 
         assert set([4, 6]) == set([len(self._scheduler.hosts),
@@ -172,13 +179,13 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_dispatcher_realm_with_sub.cfg',
-                             'cfg/dispatcher/alignak-sub.ini')
+        self.setup_with_file('cfg/dispatcher/realms_with_sub_realms.cfg',
+                             'cfg/dispatcher/realms_with_sub_realms.ini')
         # Got 3 realms
-        assert 3 == len(self.arbiter.dispatcher.realms)
-        for realm in self.arbiter.dispatcher.realms:
-            assert 1 == len(realm.confs)
-            for cfg in realm.confs.values():
+        assert 3 == len(self.arbiter.dispatcher.conf.realms)
+        for realm in self.arbiter.dispatcher.conf.realms:
+            assert 1 == len(realm.parts)
+            for cfg in realm.parts.values():
                 assert cfg.is_assigned
         # 3 schedulers
         assert 3 == len(self.arbiter.dispatcher.schedulers)

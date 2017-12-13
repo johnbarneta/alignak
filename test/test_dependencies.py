@@ -1006,7 +1006,7 @@ class TestDependencies(AlignakTest):
         self.setup_with_file('cfg/cfg_dependencies.cfg')
         assert self.conf_is_correct
 
-        self._scheduler.update_recurrent_works_tick('check_freshness', 1)
+        self._scheduler.update_recurrent_works_tick({'tick_check_freshness': 1})
 
         host = self._scheduler.hosts.find_by_name("test_host_E")
         svc = self._scheduler.services.find_srv_by_name_and_hostname(
@@ -1090,7 +1090,7 @@ class TestDependencies(AlignakTest):
         self.setup_with_file('cfg/cfg_dependencies_conf.cfg')
         assert self.conf_is_correct
 
-        self._scheduler.update_recurrent_works_tick('check_freshness', 1)
+        self._scheduler.update_recurrent_works_tick({'tick_check_freshness': 1})
 
         host = self._scheduler.hosts.find_by_name("host_A")
         svc = self._scheduler.services.find_srv_by_name_and_hostname(

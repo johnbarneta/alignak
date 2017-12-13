@@ -132,10 +132,10 @@ class TestConfig(AlignakTest):
         assert self.arbiter.conf.conf_is_correct
 
         # Configuration inner properties are valued
-        assert self.arbiter.conf.main_config_file == os.path.abspath('cfg/cfg_default.cfg')
-        assert self.arbiter.conf.config_base_dir == 'cfg'
+        assert self.arbiter.conf.main_config_file == os.path.abspath('cfg/alignak.ini')
+        assert self.arbiter.conf.config_base_dir == '/home/alignak/alignak/test/cfg'
         # Default Alignak name is the arbiter name
-        assert self.arbiter.conf.alignak_name == 'arbiter-master'
+        assert self.arbiter.conf.alignak_name == 'My Alignak'
 
     def test_config_conf_inner_properties_named_alignak(self):
         """ Default configuration with an alignak_name property
@@ -155,14 +155,15 @@ class TestConfig(AlignakTest):
         assert self.arbiter.conf.conf_is_correct
 
         # Alignak name is defined in the arbiter
-        assert self.arbiter.conf.alignak_name == 'my_alignak'
-        assert self.arbiter.alignak_name == 'my_alignak'
+        assert self.arbiter.conf.alignak_name == 'My Alignak'
+        assert self.arbiter.alignak_name == 'My Alignak'
 
         # Alignak name is defined in the configuration dispatched to the schedulers
         assert len(self.arbiter.dispatcher.schedulers) == 1
         for scheduler in self.arbiter.dispatcher.schedulers:
-            assert 'alignak_name' in scheduler.conf_package
-            assert scheduler.conf_package.get('alignak_name') == 'my_alignak'
+            print(scheduler)
+            assert 'alignak_name' in scheduler.conf_part
+            assert scheduler.conf_part.get('alignak_name') == 'my_alignak'
 
         # Alignak name is defined in the configuration dispatched to the satellites
         assert len(self.arbiter.dispatcher.satellites) == 4
@@ -737,7 +738,7 @@ class TestConfig(AlignakTest):
         According to the order in which errors are detected, the reported error messages are not
         the same!
 
-        To avoid such a problem, the relma containing an unknown member for this test must
+        To avoid such a problem, the realm containing an unknown member for this test must
         not be used in an host configuration :)
 
         :return: None

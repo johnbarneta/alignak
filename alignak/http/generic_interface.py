@@ -111,7 +111,7 @@ class GenericInterface(object):
             # I've got a conf and a good one
             return self.app.cur_conf and self.app.cur_conf.magic_hash == magic_hash
 
-        return self.app.cur_conf is not None
+        return getattr(self.app, 'cur_conf', None) is not None
 
     @cherrypy.expose
     @cherrypy.tools.json_in()
@@ -222,7 +222,7 @@ class GenericInterface(object):
         :return: None
         """
         with self.app.conf_lock:
-            logger.warning("Arbiter wants me to wait for a new configuration")
+            logger.warning("My Arbiter wants me to wait for a new configuration.")
             # Clear can occur while setting up a new conf and lead to error.
             self.app.schedulers.clear()
             self.app.cur_conf = None

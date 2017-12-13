@@ -63,8 +63,10 @@ class SchedulerLink(SatelliteLink):
 
     properties = SatelliteLink.properties.copy()
     properties.update({
-        # 'scheduler_name':
-        #     StringProp(fill_brok=['full_status']),
+        'type':
+            StringProp(default='scheduler', fill_brok=['full_status']),
+        'scheduler_name':
+            StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
             IntegerProp(default=7768, fill_brok=['full_status']),
         'weight':
@@ -79,7 +81,7 @@ class SchedulerLink(SatelliteLink):
     running_properties.update({
         'conf':
             StringProp(default=None),
-        'conf_package':
+        'cfg':
             DictProp(default={}),
         'need_conf':
             StringProp(default=True),
@@ -143,15 +145,14 @@ class SchedulerLink(SatelliteLink):
         """
         Get configuration of the scheduler satellite
 
-        :return: dictionary of scheduler information
+        :return: dictionary of link information
         :rtype: dict
         """
-        return {'name': self.name, 'port': self.port, 'address': self.address,
-                'instance_id': self.uuid,
-                'active': self.conf is not None, 'push_flavor': self.push_flavor,
-                'timeout': self.timeout, 'data_timeout': self.data_timeout,
-                'max_check_attempts': self.max_check_attempts,
-                'use_ssl': self.use_ssl, 'hard_ssl_name_check': self.hard_ssl_name_check}
+        res = super(SchedulerLink, self).give_satellite_cfg()
+        res.update({
+            'active': self.conf is not None, 'push_flavor': self.push_flavor
+        })
+        return res
 
     def get_override_configuration(self):
         """
@@ -172,5 +173,5 @@ class SchedulerLink(SatelliteLink):
 class SchedulerLinks(SatelliteLinks):
     """Please Add a Docstring to describe the class here"""
 
-    # name_property = "scheduler_name"
+    name_property = "scheduler_name"
     inner_class = SchedulerLink

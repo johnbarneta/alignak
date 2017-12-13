@@ -1928,7 +1928,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_EVENT_HANDLER_ENABLED"].value
             self.conf.enable_event_handlers = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def disable_flap_detection(self):
         """Disable flap detection (globally)
@@ -1943,7 +1943,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_FLAP_DETECTION_ENABLED"].value
             self.conf.enable_flap_detection = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
             # Is need, disable flap state for hosts and services
             for service in self.conf.services:
                 if service.is_flapping:
@@ -2126,7 +2126,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_FRESHNESS_CHECKS_ENABLED"].value
             self.conf.check_host_freshness = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def disable_host_notifications(self, host):
         """Disable notifications for a host
@@ -2186,7 +2186,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_NOTIFICATIONS_ENABLED"].value
             self.conf.enable_notifications = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def disable_passive_host_checks(self, host):
         """Disable passive checks for a host
@@ -2231,7 +2231,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_PERFORMANCE_DATA_ENABLED"].value
             self.conf.process_performance_data = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def disable_servicegroup_host_checks(self, servicegroup):
         """Disable host checks for a servicegroup
@@ -2348,7 +2348,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_FRESHNESS_CHECKS_ENABLED"].value
             self.conf.check_service_freshness = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def disable_svc_check(self, service):
         """Disable checks for a service
@@ -2496,7 +2496,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_EVENT_HANDLER_ENABLED"].value
             self.conf.enable_event_handlers = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def enable_flap_detection(self):
         """Enable flap detection (globally)
@@ -2511,7 +2511,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_FLAP_DETECTION_ENABLED"].value
             self.conf.enable_flap_detection = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def enable_hostgroup_host_checks(self, hostgroup):
         """Enable host checks for a hostgroup
@@ -2679,7 +2679,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_FRESHNESS_CHECKS_ENABLED"].value
             self.conf.check_host_freshness = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def enable_host_notifications(self, host):
         """Enable notifications for a host
@@ -2739,7 +2739,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_NOTIFICATIONS_ENABLED"].value
             self.conf.enable_notifications = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def enable_passive_host_checks(self, host):
         """Enable passive checks for a host
@@ -2783,7 +2783,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_PERFORMANCE_DATA_ENABLED"].value
             self.conf.process_performance_data = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def enable_servicegroup_host_checks(self, servicegroup):
         """Enable host checks for a servicegroup
@@ -2881,7 +2881,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_FRESHNESS_CHECKS_ENABLED"].value
             self.conf.check_service_freshness = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def enable_svc_check(self, service):
         """Enable checks for a service
@@ -3796,7 +3796,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_PASSIVE_CHECKS_ENABLED"].value
             self.conf.accept_passive_host_checks = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def start_accepting_passive_svc_checks(self):
         """Enable passive service check submission (globally)
@@ -3811,7 +3811,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_PASSIVE_CHECKS_ENABLED"].value
             self.conf.accept_passive_service_checks = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def start_executing_host_checks(self):
         """Enable host check execution (globally)
@@ -3826,7 +3826,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_ACTIVE_CHECKS_ENABLED"].value
             self.conf.execute_host_checks = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def start_executing_svc_checks(self):
         """Enable service check execution (globally)
@@ -3841,7 +3841,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_ACTIVE_CHECKS_ENABLED"].value
             self.conf.execute_service_checks = True
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def stop_accepting_passive_host_checks(self):
         """Disable passive host check submission (globally)
@@ -3855,7 +3855,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_PASSIVE_CHECKS_ENABLED"].value
             self.conf.accept_passive_host_checks = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def stop_accepting_passive_svc_checks(self):
         """Disable passive service check submission (globally)
@@ -3869,7 +3869,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_PASSIVE_CHECKS_ENABLED"].value
             self.conf.accept_passive_service_checks = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def stop_executing_host_checks(self):
         """Disable host check execution (globally)
@@ -3883,7 +3883,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_ACTIVE_CHECKS_ENABLED"].value
             self.conf.execute_host_checks = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def stop_executing_svc_checks(self):
         """Disable service check execution (globally)
@@ -3897,7 +3897,7 @@ class ExternalCommandManager:
             self.conf.modified_attributes |= DICT_MODATTR["MODATTR_ACTIVE_CHECKS_ENABLED"].value
             self.conf.execute_service_checks = False
             self.conf.explode_global_conf()
-            self.daemon.get_and_register_update_program_status_brok()
+            self.daemon.update_program_status()
 
     def launch_svc_event_handler(self, service):
         """Launch event handler for a service

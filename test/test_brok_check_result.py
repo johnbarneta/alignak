@@ -56,7 +56,7 @@ class TestBrokCheckResult(AlignakTest):
         time.sleep(0.1)
         host_check_results = []
         service_check_results = []
-        for brok in self._scheduler.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'host_check_result':
                 host_check_results.append(brok)
             elif brok.type == 'service_check_result':

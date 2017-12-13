@@ -122,20 +122,8 @@ class HTTPClient(object):
         self.set_proxy(proxy)
 
     def __repr__(self):
-        return "<%s %s, SSL: %s />" % (self.__class__.__name__, self.uri, self.use_ssl)
+        return "%r %r, SSL: %r" % (self.__class__.__name__, self.uri, self.use_ssl)
     __str__ = __repr__
-
-    @property
-    def con(self):  # pragma: no cover, deprecated
-        """Deprecated property of HTTPClient
-
-        :return: connection
-        :rtype: object
-        """
-        warnings.warn("HTTPClient.con is deprecated attribute, "
-                      "please use HTTPClient.connection instead.",
-                      DeprecationWarning, stacklevel=2)
-        return self.connection
 
     @property
     def connection(self):

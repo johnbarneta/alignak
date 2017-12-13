@@ -76,7 +76,7 @@ class TestModules(AlignakTest):
         self.show_logs()
 
         # The only existing arbiter module is Example declared in the configuration
-        modules = [m.module_alias for m in self.arbiter.myself.modules]
+        modules = [m.module_alias for m in self.arbiter.link_to_myself.modules]
         assert modules == ['Example']
 
         # The only existing broker module is Example declared in the configuration
@@ -130,7 +130,7 @@ class TestModules(AlignakTest):
         self.show_logs()
 
         # The arbiter module is 'backend_arbiter' declared in the configuration
-        modules = [m.module_alias for m in self.arbiter.myself.modules]
+        modules = [m.module_alias for m in self.arbiter.link_to_myself.modules]
         assert modules == ['backend_arbiter']
 
     def test_missing_module_detection(self):
@@ -201,7 +201,7 @@ class TestModules(AlignakTest):
         self.show_configuration_logs()
 
         # No arbiter modules created
-        modules = [m.module_alias for m in self.arbiter.myself.modules]
+        modules = [m.module_alias for m in self.arbiter.link_to_myself.modules]
         assert modules == ['Example']
 
         # The only existing broker module is Example declared in the configuration
@@ -242,7 +242,7 @@ class TestModules(AlignakTest):
         })
 
         # Create the modules manager for a daemon type
-        self.modulemanager = ModulesManager('receiver', None)
+        self.modulemanager = ModulesManager(self._receiver, None)
 
         # Load an initialize the modules:
         #  - load python module

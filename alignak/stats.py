@@ -127,9 +127,9 @@ Alignak daemons statistics dictionary:
             delete_zombie_checks
             delete_zombie_actions
             clean_caches
-            update_retention_file
+            update_retention
             check_orphaned
-            get_and_register_update_program_status_brok
+            update_program_status
             check_for_system_time_change
             manage_internal_checks
             clean_queues

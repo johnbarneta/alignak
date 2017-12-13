@@ -464,13 +464,11 @@ class Host(SchedulingItem):  # pylint: disable=R0904
         """
         self.services.append(service)
 
-    def __repr__(self):
-        return '<Host host_name=%r name=%r use=%r />' % (
-            getattr(self, 'host_name', None),
-            getattr(self, 'name', None),
-            getattr(self, 'use', None))
-
-    __str__ = __repr__
+    def __str__(self):
+        return '<%s %s, realm: %s, use: %s />' \
+               % (self.__class__.__name__, self.get_full_name(),
+                  getattr(self, 'realm', 'Unset'), getattr(self, 'use', None))
+    __repr__ = __str__
 
     def is_excluded_for(self, service):
         """Check whether this host should have the passed service be "excluded" or "not included".

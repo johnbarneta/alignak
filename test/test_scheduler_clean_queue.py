@@ -52,24 +52,24 @@ class TestSchedulerCleanQueue(AlignakTest):
         svc.event_handler_enabled = False
 
         # Define clean queue each time for the test
-        self._scheduler.update_recurrent_works_tick('clean_queues', 1000)
+        self._scheduler.update_recurrent_works_tick({'clean_queues': 1000})
 
         self.scheduler_loop(1, [[host, 2, 'DOWN'], [svc, 0, 'OK']])
         time.sleep(0.1)
         brok_limit = 5 * (len(self._scheduler.hosts) +
                           len(self._scheduler.services))
         brok_limit += 1
-        assert len(self._scheduler.brokers['broker-master']['broks']) < brok_limit
+        assert len(self._scheduler.broks) < brok_limit
 
         for _ in xrange(0, 10):
             self.scheduler_loop(1, [[host, 0, 'UP'], [svc, 1, 'WARNING']])
             time.sleep(0.1)
             self.scheduler_loop(1, [[host, 2, 'DOWN'], [svc, 0, 'OK']])
             time.sleep(0.1)
-        assert len(self._scheduler.brokers['broker-master']['broks']) > brok_limit
+        assert len(self._scheduler.broks) > brok_limit
         self._scheduler.update_recurrent_works_tick('clean_queues', 1)
         self.scheduler_loop(1, [[host, 0, 'UP'], [svc, 1, 'WARNING']])
-        assert len(self._scheduler.brokers['broker-master']['broks']) <= brok_limit
+        assert len(self._scheduler.broks) <= brok_limit
 
     def test_clean_checks(self):
         """ Test clean checks in scheduler
@@ -92,7 +92,7 @@ class TestSchedulerCleanQueue(AlignakTest):
         svc.event_handler_enabled = False
 
         # Define clean queue each time for the test
-        self._scheduler.update_recurrent_works_tick('clean_queues', 1)
+        self._scheduler.update_recurrent_works_tick({'clean_queues': 1})
 
         self._scheduler.update_recurrent_works_tick('delete_zombie_checks', 1000)
 
@@ -138,8 +138,8 @@ class TestSchedulerCleanQueue(AlignakTest):
         svc.act_depend_of = []  # no hostchecks on critical checkresults
 
         # Define clean queue each time for the test
-        self._scheduler.update_recurrent_works_tick('clean_queues', 1000)
-        self._scheduler.update_recurrent_works_tick('delete_zombie_actions', 1000)
+        self._scheduler.update_recurrent_works_tick({'clean_queues': 1000})
+        self._scheduler.update_recurrent_works_tick({'delete_zombie_actions': 1000})
 
         self.scheduler_loop(1, [[host, 2, 'DOWN'], [svc, 0, 'OK']])
         time.sleep(0.1)
@@ -154,6 +154,6 @@ class TestSchedulerCleanQueue(AlignakTest):
             self.scheduler_loop(1, [[host, 2, 'DOWN'], [svc, 0, 'OK']])
             time.sleep(0.1)
         assert len(self._scheduler.actions) > action_limit
-        self._scheduler.update_recurrent_works_tick('clean_queues', 1)
+        self._scheduler.update_recurrent_works_tick({'clean_queues': 1})
         self.scheduler_loop(1, [[host, 0, 'UP'], [svc, 1, 'WARNING']])
         assert len(self._scheduler.actions) <= action_limit

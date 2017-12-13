@@ -421,7 +421,6 @@ class Daemon(object):
         if 'local_log' in kwargs and kwargs['local_log']:
             self.local_log = kwargs['local_log']
         self.log_filename = os.path.abspath(self.local_log)
-        print("Log: %s" % self.local_log)
         dirname = os.path.dirname(self.local_log)
         try:
             os.makedirs(dirname)
@@ -507,7 +506,7 @@ class Daemon(object):
         self.set_signal_handler()
 
     def __repr__(self):
-        return '<Daemon %s/%s, listening on %s:%s:%d />' % \
+        return '<Daemon %r/%r, listening on %r:%r:%d />' % \
                (self.type, self.name, self.scheme, self.host, self.port)
     __str__ = __repr__
 

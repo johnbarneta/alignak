@@ -79,7 +79,7 @@ class MacroResolverTester(object):
         (svc, hst) = self.get_hst_svc()
         data = [hst, svc]
         result = mr.resolve_simple_macros_in_string("$ALIGNAK$", [], None, None, None)
-        assert result == "arbiter-master"
+        assert result == "My Alignak"
 
     def test_resolv_simple_command(self):
         """Test a simple command resolution

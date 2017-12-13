@@ -126,17 +126,20 @@ class Item(AlignakObject):
     ok_up = ''
 
     def __init__(self, params=None, parsing=True):
+        # Comment this to avoid too verbose log!
+        # logger.debug("Initializing a %s with %s", self.my_type, params)
         if not parsing:
             # Unserializing an existing object
             super(Item, self).__init__(params, parsing)
             return
 
         # Creating a new Alignak object instance
-        cls = self.__class__
         self.uuid = uuid.uuid4().hex
 
-        self.customs = {}  # for custom variables
-        self.plus = {}  # for value with a +
+        # For custom variables
+        self.customs = {}
+        # For values with a +
+        self.plus = {}
         if not hasattr(self, 'old_properties'):
             self.old_properties = {}
 
@@ -176,7 +179,7 @@ class Item(AlignakObject):
                     # After this a macro is always containing a string value!
                 else:
                     logger.debug("Guessing the property '%s' type because it "
-                                 "is not in %s object properties", key, cls.__name__)
+                                 "is not in %s object properties", key, self.__class__.__name__)
                     self.properties[key] = ToGuessProp(default='')
                     val = ToGuessProp.pythonize(params[key])
                     logger.debug("Set the property '%s' type as %s", key, type(val))
@@ -204,6 +207,9 @@ class Item(AlignakObject):
                 self.customs[custom_name] = val
             else:
                 setattr(self, key, val)
+
+        # Change Nagios2 names to Nagios3 ones (before using them)
+        self.old_properties_names_to_new()
 
     @property
     def id(self):  # pragma: no cover, deprecation
@@ -271,15 +277,13 @@ class Item(AlignakObject):
 
     def clean(self):
         """
-        Clean properties only need when initialize & configure
-
-        TODO: never called anywhere, still useful?
+        Clean properties only needed for initialization and configuration
 
         :return: None
         """
-        for name in ('imported_from', 'use', 'plus', 'templates',):
+        for property in ('imported_from', 'use', 'plus', 'templates',):
             try:
-                delattr(self, name)
+                delattr(self, property)
             except AttributeError:
                 pass
 
@@ -355,7 +359,8 @@ class Item(AlignakObject):
     @classmethod
     def load_global_conf(cls, conf):
         """
-        Load configuration of parent object.
+        Apply global Alignak configuration.
+
         Some objects inherit some properties from the global configuration if they do not
         define their own value. E.g. the global 'accept_passive_service_checks' is inherited
         by the services as 'accept_passive_checks'
@@ -561,32 +566,6 @@ class Item(AlignakObject):
         """
         if comment_id in self.comments:
             del self.comments[comment_id]
-
-    def prepare_for_conf_sending(self):
-        """
-        Flatten some properties tagged by the 'conf_send_preparation' because
-        they are too 'linked' to be send like that (like realms)
-
-        :return: None
-        """
-        cls = self.__class__
-
-        for prop, entry in cls.properties.items():
-            # Is this property need preparation for sending?
-            if entry.conf_send_preparation is not None:
-                fun = entry.conf_send_preparation
-                if fun is not None:
-                    val = fun(getattr(self, prop))
-                    setattr(self, prop, val)
-
-        if hasattr(cls, 'running_properties'):
-            for prop, entry in cls.running_properties.items():
-                # Is this property need preparation for sending?
-                if entry.conf_send_preparation is not None:
-                    fun = entry.conf_send_preparation
-                    if fun is not None:
-                        val = fun(getattr(self, prop))
-                        setattr(self, prop, val)
 
     def get_property_value_for_brok(self, prop, tab):
         """
@@ -992,11 +971,8 @@ class Items(object):
         # which would be rather odd :
         name = getattr(item, name_property, '')
         if not name:
-            objcls = self.inner_class.my_type
-            msg = "a %s item has been defined without %s, from: %s" % (
-                objcls, name_property, item.imported_from
-            )
-            item.add_error(msg)
+            item.add_error("a %s item has been defined without %s, from: %s"
+                           % (self.inner_class.my_type, name_property, item.imported_from))
         elif name in self.name_to_item:
             item = self.manage_conflict(item, name)
         self.name_to_item[name] = item
@@ -1057,15 +1033,6 @@ class Items(object):
         :rtype: alignak.objects.item.Item
         """
         return self.name_to_item.get(name, None)
-
-    def prepare_for_sending(self):
-        """
-        flatten some properties
-
-        :return: None
-        """
-        for i in self:
-            i.prepare_for_conf_sending()
 
     def old_properties_names_to_new(self):  # pragma: no cover, never called
         """Convert old Nagios2 names to Nagios3 new names
@@ -1222,16 +1189,14 @@ class Items(object):
         """
         del self.templates
 
-    def clean(self):  # pragma: no cover, never called
-        """Request to remove the unnecessary attributes/others from our items
-
-        TODO: still useful?
+    def clean(self):
+        """
+        Clean the list items
 
         :return: None
         """
         for i in self:
             i.clean()
-        Item.clean(self)
 
     def fill_default(self):
         """
@@ -1245,7 +1210,6 @@ class Items(object):
     def __str__(self):
         return '<%s nbr_elements=%s nbr_templates=%s />' % (
             self.__class__.__name__, len(self), len(self.name_to_template))
-
     __repr__ = __str__
 
     def serialize(self):

@@ -196,7 +196,7 @@ class Testretention(AlignakTest):
         # We got 'monitoring_log' broks for logging to the monitoring logs...
         monitoring_logs = []
         self._sched = self._scheduler
-        for brok in self._sched.brokers['broker-master']['broks'].itervalues():
+        for brok in self._broker.broks.itervalues():
             if brok.type == 'monitoring_log':
                 data = unserialize(brok.data)
                 monitoring_logs.append((data['level'], data['message']))

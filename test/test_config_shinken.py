@@ -42,6 +42,7 @@ class TestConfig(AlignakTest):
         """
         self.print_header()
         self.setup_with_file('cfg/_shinken/_main.cfg')
+        self.show_logs()
         assert self.conf_is_correct
 
         # No error messages
@@ -49,26 +50,12 @@ class TestConfig(AlignakTest):
         assert len(self.configuration_errors) == 0
         # No warning messages
         print self.configuration_warnings
-        assert len(self.configuration_warnings) == 16
+        assert len(self.configuration_warnings) == 3
         assert self.configuration_warnings == [
-            u'Guessing the property ca_cert type because it is not in Config object properties',
-            u'Guessing the property daemon_enabled type because it is not in Config object properties',
-            u'Guessing the property hard_ssl_name_check type because it is not in Config object properties',
-            u'Guessing the property http_backend type because it is not in Config object properties',
-            u'Guessing the property local_log type because it is not in Config object properties',
-            u'Guessing the property lock_file type because it is not in Config object properties',
-            u'Guessing the property modules_dir type because it is not in Config object properties',
-            u'Guessing the property server_cert type because it is not in Config object properties',
-            u'Guessing the property server_key type because it is not in Config object properties',
-            u'Guessing the property use_ssl type because it is not in Config object properties',
-            u'Guessing the property workdir type because it is not in Config object properties',
-            u'Host graphite use/inherit from an unknown template: graphite ! from: cfg/_shinken/hosts/graphite.cfg:1',
-            'Guessing the property hostgroup_name type because it is not in Escalation object properties',
-            "Guessed the property hostgroup_name type as a <type 'unicode'>",
-            u'Guessing the property direct_routing type because it is not in ReceiverLink object properties',
-            u"Guessed the property direct_routing type as a <type 'unicode'>",
-            # u"Some hosts exist in the realm 'France' but no broker is defined for this realm",
-            # u"Added a broker in the realm 'France'",
+            u"Some hosts exist in the realm 'France' but no broker is defined for this realm",
+            u"Added a broker in the realm 'France'",
+            u'Host graphite use/inherit from an unknown template: graphite ! '
+            u'from: cfg/_shinken/hosts/graphite.cfg:1',
         ]
 
         # Arbiter named as in the configuration

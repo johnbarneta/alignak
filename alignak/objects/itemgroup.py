@@ -76,8 +76,8 @@ class Itemgroup(Item):
 
     def __repr__(self):
         if not self.members:
-            return '<%s %s, no members/>' % (self.__class__.__name__, self.get_name())
-        return '<%s %s, %d members: %s/>' \
+            return '<%r %r, no members/>' % (self.__class__.__name__, self.get_name())
+        return '<%r %r, %d members: %r/>' \
                % (self.__class__.__name__, self.get_name(),
                   len(self.members), ', '.join([str(s) for s in self.members]))
     __str__ = __repr__
@@ -223,7 +223,7 @@ class Itemgroups(Items):
     """
 
     def __repr__(self):
-        return '<%s, %d elements: %s/>' \
+        return '<%r, %d elements: %r/>' \
                % (self.__class__.__name__, len(self), ', '.join([str(s) for s in self]))
     __str__ = __repr__
 

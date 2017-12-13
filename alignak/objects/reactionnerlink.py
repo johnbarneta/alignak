@@ -55,8 +55,10 @@ class ReactionnerLink(SatelliteLink):
     my_type = 'reactionner'
     properties = SatelliteLink.properties.copy()
     properties.update({
-        # 'reactionner_name':
-        #     StringProp(fill_brok=['full_status'], to_send=True),
+        'type':
+            StringProp(default='reactionner', fill_brok=['full_status']),
+        'reactionner_name':
+            StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
             IntegerProp(default=7769, fill_brok=['full_status']),
         'min_workers':
@@ -77,11 +79,25 @@ class ReactionnerLink(SatelliteLink):
         """
         self.realm.reactionners.append(self)
 
+    def give_satellite_cfg(self):
+        """
+        Get configuration of the Reactionner satellite
+
+        :return: dictionary of link information
+        :rtype: dict
+        """
+        res = super(ReactionnerLink, self).give_satellite_cfg()
+        res.update({
+            'active': True, 'passive': self.passive,
+            'reactionner_tags': getattr(self, 'reactionner_tags', [])
+        })
+        return res
+
 
 class ReactionnerLinks(SatelliteLinks):  # (Items):
     """
     Class to manage list of ReactionnerLink.
     ReactionnerLinks is used to regroup all reactionners
     """
-    # name_property = "reactionner_name"
+    name_property = "reactionner_name"
     inner_class = ReactionnerLink

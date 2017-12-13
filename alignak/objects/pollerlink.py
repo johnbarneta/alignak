@@ -57,8 +57,10 @@ class PollerLink(SatelliteLink):
     # To_send: send or not to satellite conf
     properties = SatelliteLink.properties.copy()
     properties.update({
-        # 'poller_name':
-        #     StringProp(fill_brok=['full_status'], to_send=True),
+        'type':
+            StringProp(default='poller', fill_brok=['full_status']),
+        'poller_name':
+            StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
             IntegerProp(default=7771, fill_brok=['full_status']),
         'min_workers':
@@ -79,11 +81,25 @@ class PollerLink(SatelliteLink):
         """
         self.realm.pollers.append(self)
 
+    def give_satellite_cfg(self):
+        """
+        Get configuration of the Poller satellite
+
+        :return: dictionary of link information
+        :rtype: dict
+        """
+        res = super(PollerLink, self).give_satellite_cfg()
+        res.update({
+            'active': True, 'passive': self.passive,
+            'poller_tags': getattr(self, 'poller_tags', [])
+        })
+        return res
+
 
 class PollerLinks(SatelliteLinks):
     """
     Class to manage list of PollerLink.
     PollerLinks is used to regroup all links between the Arbiter and different Pollers
     """
-    # name_property = "poller_name"
+    name_property = "poller_name"
     inner_class = PollerLink

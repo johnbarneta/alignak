@@ -1307,7 +1307,7 @@ def parse_daemon_args(arbiter=False):
         parser.add_argument('-V', '--verify-config', dest='verify_only', action='store_true',
                             help='Verify configuration file(s) and exit')
         parser.add_argument('-k', '--alignak-name', dest='alignak_name',
-                            default='arbiter-master',
+                            default='Default-arbiter',
                             help='Set the name of the arbiter to pick in the configuration files '
                                  'For a spare arbiter, this parameter must contain its name!')
 

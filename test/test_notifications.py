@@ -467,7 +467,7 @@ class TestNotifications(AlignakTest):
         self._scheduler = self._scheduler
 
         # Check freshness on each scheduler tick
-        self._scheduler.update_recurrent_works_tick('check_freshness', 1)
+        self._scheduler.update_recurrent_works_tick({'check_freshness': 1})
 
         # Get host
         host = self._scheduler.hosts.find_by_name('test_host_0')

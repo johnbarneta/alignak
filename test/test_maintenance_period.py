@@ -58,9 +58,6 @@ class TestMaintenancePeriod(AlignakTest):
         # Our scheduler
         self._sched = self._scheduler
 
-        # Our broker
-        self._broker = self._sched.brokers['broker-master']
-
         # No error messages
         assert len(self.configuration_errors) == 0
         # No warning messages

@@ -1545,8 +1545,8 @@ class Services(SchedulingItems):
         for serv in self:
             if not serv.host:
                 to_del.append(serv.uuid)
-        for sid in to_del:
-            del self.items[sid]
+        for service_uuid in to_del:
+            del self.items[service_uuid]
 
     def explode_services_from_hosts(self, hosts, service, hnames):
         """

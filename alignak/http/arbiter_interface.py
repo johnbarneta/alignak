@@ -62,7 +62,7 @@ class ArbiterInterface(GenericInterface):
 
         # Else, I'm just a spare, so I listen to my master
         logger.debug("Received message to not run. I am the spare, stopping.")
-        self.app.last_master_speack = time.time()
+        self.app.last_master_speak = time.time()
         self.app.must_run = False
         return True
 
@@ -75,7 +75,7 @@ class ArbiterInterface(GenericInterface):
         :return: None
         """
         with self.app.conf_lock:
-            logger.warning("Arbiter wants me to wait for a new configuration")
+            logger.warning("My master Arbiter wants me to wait for a new configuration.")
             self.app.cur_conf = None
 
     @cherrypy.expose
@@ -151,7 +151,7 @@ class ArbiterInterface(GenericInterface):
                     for prop in props:
                         if not hasattr(daemon, prop):
                             continue
-                        if prop in ["realms", "conf", "con", "tags", "modules", "conf_package",
+                        if prop in ["realms", "conf", "con", "tags", "modules", "cfg",
                                     "broks"]:
                             continue
                         val = getattr(daemon, prop)

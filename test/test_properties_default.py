@@ -163,7 +163,7 @@ class TestConfig(PropertiesTester, AlignakTest):
         ('log_rotation_method', 'd'),
         ('log_archive_path', '/usr/local/alignak/var/log/archives'),
         ('check_external_commands', True),
-        ('main_config_file', '/usr/local/etc/alignak/alignak.cfg'),
+        ('main_config_file', '/usr/local/etc/alignak/alignak.ini'),
         ('command_file', ''),
         ('state_retention_file', ''),
         ('retention_update_interval', 60),
@@ -241,7 +241,6 @@ class TestConfig(PropertiesTester, AlignakTest):
         ('max_plugins_output_length', 8192),
         ('no_event_handlers_during_downtimes', False),
         ('cleaning_queues_interval', 900),
-        ('disable_old_nagios_parameters_whining', False),
         ('enable_problem_impacts_states_change', False),
         ('resource_macros_names', []),
 
@@ -249,7 +248,6 @@ class TestConfig(PropertiesTester, AlignakTest):
         ('runners_timeout', 3600),
         ('pack_distribution_file', 'pack_distribution.dat'),
 
-        ('use_multiprocesses_serializer', False),
         ('daemon_thread_pool_size', 8),
         ('timeout_exit_status', 2),
 
