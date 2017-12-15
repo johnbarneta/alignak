@@ -665,8 +665,8 @@ class TestExternalCommandsPassiveChecks(AlignakTest):
         # The receiver receives an unknown service external command
         excmd = ExternalCommand('[%d] PROCESS_SERVICE_CHECK_RESULT;test_host_0;unknownservice;'
                                 '1;Service is WARNING|rtt=9999;5;10;0;10000' % time.time())
-        self._receiver.unprocessed_external_commands.append(excmd)
-        self._receiver.push_external_commands_to_schedulers()
+        self._receiver_daemon.unprocessed_external_commands.append(excmd)
+        self._receiver_daemon.push_external_commands_to_schedulers()
         # A brok...
         broks = [b for b in self._receiver.broks.values()
                  if b.type == 'unknown_service_check_result']

@@ -48,7 +48,7 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_dispatcher_simple.cfg')
+        self.setup_with_file('cfg/dispatcher/simple.cfg')
         assert 1 == len(self.arbiter.dispatcher.conf.realms)
         for realm in self.arbiter.dispatcher.conf.realms:
             assert 1 == len(realm.parts)
@@ -77,7 +77,7 @@ class TestDispatcher(AlignakTest):
 
         :return: None
         """
-        self.setup_with_file('cfg/cfg_dispatcher_simple_multi_schedulers.cfg')
+        self.setup_with_file('cfg/dispatcher/simple.cfg', 'cfg/dispatcher/simple_multi_schedulers.ini')
         assert 1 == len(self.arbiter.dispatcher.conf.realms)
         for realm in self.arbiter.dispatcher.conf.realms:
             assert 2 == len(realm.parts)
@@ -103,7 +103,7 @@ class TestDispatcher(AlignakTest):
 
         :return: None
         """
-        self.setup_with_file('cfg/cfg_dispatcher_simple_multi_pollers.cfg')
+        self.setup_with_file('cfg/dispatcher/simple.cfg', 'cfg/dispatcher/simple_multi_pollers.ini')
         assert 1 == len(self.arbiter.dispatcher.conf.realms)
         for realm in self.arbiter.dispatcher.conf.realms:
             assert 1 == len(realm.parts)
@@ -135,20 +135,31 @@ class TestDispatcher(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('cfg/cfg_dispatcher_realm.cfg', 'cfg/dispatcher/alignak-realm2.ini')
+        self.setup_with_file('cfg/dispatcher/2-realms.cfg', 'cfg/dispatcher/2-realms.ini')
+        # 2 realms
         assert 2 == len(self.arbiter.dispatcher.conf.realms)
         for realm in self.arbiter.dispatcher.conf.realms:
             assert 1 == len(realm.parts)
             for cfg in realm.parts.values():
                 assert cfg.is_assigned
+        # 2 schedulers
+        print("Schedulers: %s")
+        for sat in self.arbiter.dispatcher.schedulers:
+            print("- %s" % sat)
         assert 2 == len(self.arbiter.dispatcher.schedulers)
-        print("Satellites: %s" % self.arbiter.dispatcher.satellites)
+        # 8 satellites
+        print("Satellites: %s")
         for sat in self.arbiter.dispatcher.satellites:
             print("- %s" % sat)
         assert 8 == len(self.arbiter.dispatcher.satellites)
+        # 10 daemons links (2+8)
+        print("All links: %s")
+        for sat in self.arbiter.dispatcher.all_daemons_links:
+            print("- %s" % sat)
+        assert 10 == len(self.arbiter.dispatcher.all_daemons_links)
 
-        assert set([4, 6]) == set([len(self._scheduler.hosts),
-                                   len(self.schedulers['realm2-scheduler-master'].sched.hosts)])
+        assert 6 == len(self.schedulers['scheduler-master'].sched.hosts)
+        assert 4 == len(self.schedulers['realm2-scheduler-master'].sched.hosts)
 
     def test_realms_with_sub(self):
         """ Test with 2 realms but some satellites are sub_realms:
@@ -189,25 +200,24 @@ class TestDispatcher(AlignakTest):
                 assert cfg.is_assigned
         # 3 schedulers
         assert 3 == len(self.arbiter.dispatcher.schedulers)
-        for satellite in self.arbiter.dispatcher.satellites:
-            print("Satellite: %s" % (satellite))
+        for satellite in self.arbiter.dispatcher.schedulers:
+            print("Scheduler: %s" % (satellite))
         # 2 reactionners
         # 3 pollers
         # 3 receivers
         # 2 brokers
         assert 10 == len(self.arbiter.dispatcher.satellites), self.arbiter.dispatcher.satellites
-
         for satellite in self.arbiter.dispatcher.satellites:
             print("Satellite: %s, schedulers: %s" % (satellite, satellite.cfg['schedulers']))
-            if satellite.get_name() in ['poller-master', 'reactionner-master', 'broker-master']:
-                assert {} != satellite.cfg['schedulers'], satellite.get_name()
-                assert 2 == len(satellite.cfg['schedulers']), \
-                                 'must have 2 schedulers in {0}'.format(satellite.get_name())
-            elif satellite.get_name() in ['realm3-poller-master', 'realm3-reactionner-master',
+            if satellite.get_name() in ['realm3-poller-master', 'realm3-reactionner-master',
                                           'realm3-broker-master']:
                 assert {} != satellite.cfg['schedulers'], satellite.get_name()
                 assert 1 == len(satellite.cfg['schedulers']), \
                                  'must have 1 scheduler in {0}'.format(satellite.get_name())
+            elif satellite.get_name() in ['poller-master', 'reactionner-master', 'broker-master']:
+                assert {} != satellite.cfg['schedulers'], satellite.get_name()
+                assert 2 == len(satellite.cfg['schedulers']), \
+                                 'must have 2 schedulers in {0}'.format(satellite.get_name())
 
     def test_realms_with_sub_multi_scheduler(self):
         """ Test with 3 realms but some satellites are sub_realms + multi schedulers
@@ -298,7 +308,7 @@ class TestDispatcher(AlignakTest):
                                  'srv_103', 'srv_104', 'srv_105', 'srv_106', 'srv_201', 'srv_202',
                                  'srv_203', 'srv_204', 'test_router_0', 'test_host_0'])
 
-    @pytest.mark.skip("Currently disabled - spare feature - and wahtever this test seems broken!")
+    @pytest.mark.skip("Currently disabled - spare feature - and whatever this test seems broken!")
     def test_simple_scheduler_spare(self):
         """ Test simple but with spare of scheduler
 
@@ -309,7 +319,7 @@ class TestDispatcher(AlignakTest):
             for port in ['7768', '7772', '7771', '7769', '7773', '8002']:
                 mockreq.get('http://localhost:%s/ping' % port, json='pong')
 
-            self.setup_with_file('cfg/cfg_dispatcher_scheduler_spare.cfg')
+            self.setup_with_file('cfg/dispatcher/simple.cfg')
             self.show_logs()
             json_managed = {self._scheduler_daemon.conf.uuid:
                             self._scheduler_daemon.conf.push_flavor}
@@ -473,7 +483,7 @@ class TestDispatcher(AlignakTest):
                 scheduler = satellite.cfg['schedulers'].itervalues().next()
                 assert 'scheduler-master' == scheduler['name']
 
-    @pytest.mark.skip("To be reactivated when spare will be implemented and tested")
+    # @pytest.mark.skip("To be reactivated when spare will be implemented and tested")
     def test_arbiter_spare(self):
         """ Test with arbiter spare
 
@@ -484,7 +494,7 @@ class TestDispatcher(AlignakTest):
             mockreq.get('http://localhost:8770/ping', json='pong')
             mockreq.get('http://localhost:8770/what_i_managed', json='{}')
             mockreq.post('http://localhost:8770/put_conf', json='true')
-            self.setup_with_file('cfg/cfg_dispatcher_arbiter_spare.cfg')
+            self.setup_with_file('cfg/dispatcher/simple.cfg', 'cfg/dispatcher/spare_arbiter.ini')
             self.arbiter.dispatcher.check_alive()
             # for arb in self.arbiter.dispatcher.arbiters:
                 # If not me and I'm a master

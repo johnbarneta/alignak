@@ -95,6 +95,7 @@ class TestMultibroker(AlignakTest):
         assert 2 == len(self.schedulers)
         mysched1 = self._scheduler_daemon
         mysched2 = self.schedulers['scheduler-master2']
+        print(self.schedulers)
 
         if len(self._scheduler.hosts) == 2:
             mysched1 = self._scheduler_daemon

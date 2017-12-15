@@ -108,37 +108,25 @@ class Dispatcher:
             raise DispatcherError("Dispatcher configuration problem: "
                                   "no valid arbiter link or configuration!")
 
+        # Direct pointer to important elements for us
         self.arbiter_link = arbiter_link
         self.conf = conf
         logger.debug("Dispatcher configuration: %s / %s", self.arbiter_link, self.conf)
 
-        # logger.debug("Dispatcher configuration packs:")
-        # print("Dispatcher configuration packs:")
-        # for cfg_id in self.conf.packs:
-        #     pack = self.conf.packs[cfg_id]
-        #     print(" - %s, flavor:%s, %s" % (pack.uuid, pack.push_flavor, pack))
-        # else:
-        #     print(" - None!")
-        #
-        # Direct pointer to important elements for us
         logger.debug("Dispatcher realms configuration:")
-        print("Dispatcher realms configuration:")
         for realm in self.conf.realms:
             logger.debug("- %s", realm)
-            print("- %s" % realm)
             for cfg_id in realm.parts:
                 realm_config = realm.parts[cfg_id]
                 print("  . %s, flavor:%s, %s" % (realm_config.uuid, getattr(realm_config, 'push_flavor', 'None'), realm_config))
 
         logger.debug("Dispatcher satellites configuration:")
-        print("Dispatcher satellites configuration:")
         for sat_type in ('arbiters', 'schedulers', 'reactionners',
                          'brokers', 'receivers', 'pollers'):
             setattr(self, sat_type, getattr(self.conf, sat_type))
             logger.debug("- %s", getattr(self, sat_type))
-            print("- %s" % getattr(self, sat_type))
             for sat in getattr(self, sat_type):
-                print("  . %s" % sat)
+                logger.debug("  . %s", sat)
 
             # for each satellite, we look if current arbiter have a specific
             # satellitemap value set for this satellite.
@@ -166,6 +154,7 @@ class Dispatcher:
         self.all_daemons_links.extend(self.brokers)
         self.all_daemons_links.extend(self.receivers)
         self.all_daemons_links.extend(self.schedulers)
+        self.all_daemons_links.extend(self.arbiters)
 
         # Some flag about dispatch need or not
         self.dispatch_ok = False
@@ -227,37 +216,21 @@ class Dispatcher:
         if not self.arbiter_link:
             raise DispatcherError("Dispatcher configuration problem: no valid arbiter link!")
 
-        # Check if the other arbiters have a conf, but only if I am a master
-        for arbiter_link in self.arbiters:
-            # If not me and I'm a master
-            if arbiter_link != self.arbiter_link and not self.arbiter_link.spare:
-                # ----------
-                # Unit tests
-                if test:
-                    have_conf = False
-                    if getattr(arbiter_link, 'unit_test_pushed_configuration', None) is not None:
-                        conf = arbiter_link['unit_test_pushed_configuration']
-                        have_conf = (conf['magic_hash'] == self.conf.magic_hash)
-                    if not have_conf:
-                        print('Sending configuration to the arbiter: %s', arbiter_link.get_name())
-                        setattr(arbiter_link, 'unit_test_pushed_configuration', arbiter_link.spare_arbiter_conf)
-
-                    self.arbiter_link.last_master_speak = time.time()
-                    self.arbiter_link.must_run = False
-                    continue
-                # ----------
-
-                if not arbiter_link.have_conf(self.conf.magic_hash):
-                    if not hasattr(self.conf, 'spare_arbiter_conf'):
-                        logger.critical('The arbiter tries to send a configuration but '
-                                     'it is not a MASTER one? Check your configuration!')
-                        continue
-                    logger.info('Sending configuration to the arbiter: %s', arbiter_link.get_name())
-                    arbiter_link.put_conf(self.conf.spare_arbiter_conf)
-
-                # Ok, it already has the conf. I remember that
-                # it does not have to run, I'm still alive!
-                arbiter_link.do_not_run()
+        # # Check if the other arbiters have a conf, but only if I am a master
+        # for arbiter_link in self.arbiters:
+        #     # If not me and I'm a master
+        #     if arbiter_link != self.arbiter_link and not self.arbiter_link.spare:
+        #         if not arbiter_link.have_conf(self.conf.magic_hash):
+        #             if not hasattr(self.conf, 'spare_arbiter_conf'):
+        #                 logger.critical('The arbiter tries to send a configuration but '
+        #                              'it is not a MASTER one? Check your configuration!')
+        #                 continue
+        #             logger.info('Sending configuration to the arbiter: %s', arbiter_link.get_name())
+        #             arbiter_link.put_conf(self.conf.spare_arbiter_conf)
+        #
+        #         # Ok, it already has the conf. I remember that
+        #         # it does not have to run, I'm still alive!
+        #         arbiter_link.do_not_run()
 
         # We check for configuration parts to be dispatched on alive schedulers.
         # If not dispatched, we need a dispatch :) and if dispatched on a failed node,
@@ -454,9 +427,11 @@ class Dispatcher:
         print("Preparing dispatch...")
         arbiters_cfg = {}
         for arbiter_link in self.arbiters:
-            print("- arbiter to dispatch: %s" % arbiter_link)
-            arbiters_cfg[arbiter_link.uuid] = arbiter_link.give_satellite_cfg()
-            print("  : %s" % arbiters_cfg[arbiter_link.uuid])
+            # If not me and I'm a master
+            if arbiter_link != self.arbiter_link and not self.arbiter_link.spare:
+                print("- arbiter to dispatch: %s" % arbiter_link)
+                arbiters_cfg[arbiter_link.uuid] = arbiter_link.give_satellite_cfg()
+                print("  : %s" % arbiters_cfg[arbiter_link.uuid])
 
         self.prepare_dispatch_schedulers(arbiters_cfg)
 
@@ -524,6 +499,8 @@ class Dispatcher:
                                 realm.name, part.name, scheduler_link.get_name())
                     print("- [%s] Preparing configuration part '%s' for the scheduler '%s'"
                           % (realm.name, part.name, scheduler_link.name))
+                    print("- [%s] hosts/services: %s / %s"
+                          % (realm.name, part.hosts, part.services))
 
                     # We give this configuration part a new 'flavor'
                     # todo: why a random? Using a hash would be better...
@@ -554,7 +531,7 @@ class Dispatcher:
 
                         # todo: confirm it is interesting?
                         'override_conf': scheduler_link.get_override_configuration(),
-                        'modules': scheduler_link.modules
+                        # 'modules': scheduler_link.modules
                     })
                     # scheduler_link.conf_package = conf_package
 
@@ -683,30 +660,78 @@ class Dispatcher:
             return
 
         self.dispatch_ok = True
-        for scheduler_link in self.schedulers:
-            if scheduler_link.is_sent:
-                print("Scheduler %s already sent!" % scheduler_link)
+
+        for link in self.arbiters:
+            # If not me and I'm a master
+            if link != self.arbiter_link and not self.arbiter_link.spare:
+                if link.need_conf:
+                    raise DispatcherError("The arbiter link '%s' did not "
+                                          "received a configuration!" % link.name)
+
+                if link.is_sent:
+                    print("Arbiter %s already sent!" % link)
+                    continue
+
+                logger.info("Sending configuration to the arbiter %s", link.name)
+                print("Sending configuration to the arbiter '%s'" % link.name)
+
+                # ----------
+                # Unit tests
+                if test:
+                    have_conf = False
+                    if getattr(link, 'unit_test_pushed_configuration', None) is not None:
+                        conf = link['unit_test_pushed_configuration']
+                        have_conf = (conf['magic_hash'] == self.conf.magic_hash)
+                    if not have_conf:
+                        print('Sending configuration to the arbiter: %s: %s' % (link.name, link))
+                        print('Dict: %s' % (link.__dict__))
+                        setattr(link, 'unit_test_pushed_configuration', link.spare_arbiter_conf)
+
+                    link.last_master_speak = time.time()
+                    link.must_run = False
+                    continue
+                # ----------
+
+                if not link.have_conf(self.conf.magic_hash):
+                    if not hasattr(self.conf, 'spare_arbiter_conf'):
+                        logger.critical('The arbiter tries to send a configuration but '
+                                     'it is not a MASTER one? Check your configuration!')
+                        continue
+                    logger.info('Sending configuration to the arbiter: %s', link.name)
+                    link.is_sent = link.put_conf(link.spare_arbiter_conf)
+                    if not link.is_sent:
+                        logger.warning("Configuration sending error for arbiter %s", link.name)
+                        self.dispatch_ok = False
+                    else:
+                        logger.info("Configuration sent to the scheduler %s", link.name)
+
+                # Ok, it already has the conf. I remember that
+                # it does not have to run, I'm still alive!
+                link.do_not_run()
+
+        for link in self.schedulers:
+            if link.is_sent:
+                print("Scheduler %s already sent!" % link)
                 continue
 
-            logger.info("Sending configuration to scheduler %s", scheduler_link.get_name())
-            print("Sending configuration to the scheduler '%s'" % scheduler_link.name)
+            logger.info("Sending configuration to the scheduler %s", link.name)
+            print("Sending configuration to the scheduler '%s'" % link.name)
 
             # ----------
             # Unit tests
             if test:
-                setattr(scheduler_link, 'unit_test_pushed_configuration', scheduler_link.cfg)
-                print("- sent: %s" % (scheduler_link.cfg))
-                scheduler_link.is_sent = True
+                setattr(link, 'unit_test_pushed_configuration', link.cfg)
+                print("- sent: %s" % (link.cfg))
+                link.is_sent = True
                 continue
             # ----------
 
-            scheduler_link.is_sent = scheduler_link.put_conf(scheduler_link.cfg)
-            if not scheduler_link.is_sent:
-                logger.warning("Configuration sending error for scheduler %s", 
-                               scheduler_link.get_name())
+            link.is_sent = link.put_conf(link.cfg)
+            if not link.is_sent:
+                logger.warning("Configuration sending error for scheduler %s", link.name)
                 self.dispatch_ok = False
             else:
-                logger.info("Configuration sent to scheduler %s", scheduler_link.get_name())
+                logger.info("Configuration sent to the scheduler %s", link.name)
 
         for sat_type in ('reactionner', 'poller', 'broker', 'receiver'):
             for satellite_link in self.satellites:

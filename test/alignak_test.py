@@ -490,19 +490,19 @@ class AlignakTest(unittest2.TestCase):
         if self.ecm_mode == 'receiver':
             res = self.ecr.resolve_command(ext_cmd)
             if res and run:
-                self._receiver.broks = {}
-                self._receiver.add(ext_cmd)
-                self._receiver.external_commands.append(ext_cmd)
-                self._receiver.push_external_commands_to_schedulers()
+                self._receiver_daemon.broks = {}
+                self._receiver_daemon.add(ext_cmd)
+                # self._receiver_daemon.external_commands.append(ext_cmd)
+                self._receiver_daemon.push_external_commands_to_schedulers()
                 # # Our scheduler
                 # self._scheduler = self.schedulers['scheduler-master'].sched
                 # Give broks to our broker
-                for brok in self._receiver.broks:
-                    print("Brok receiver: %s : %s" % (brok, self._receiver.broks[brok]))
-                    self._broker.broks[brok] = self._receiver.broks[brok]
-                for brok in self._scheduler.broks:
-                    print("Brok scheduler: %s : %s" % (brok, self._scheduler.broks[brok]))
-                    self._broker.broks[brok] = self._scheduler.broks[brok]
+                for brok in self._receiver_daemon.broks:
+                    print("Brok receiver: %s : %s" % (brok, self._receiver_daemon.broks[brok]))
+                    self._broker.broks[brok] = self._receiver_daemon.broks[brok]
+                for brok in self._scheduler_daemon.broks:
+                    print("Brok scheduler: %s : %s" % (brok, self._scheduler_daemon.broks[brok]))
+                    self._broker.broks[brok] = self._scheduler_daemon.broks[brok]
         return res
 
     def external_command_loop(self):

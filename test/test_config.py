@@ -161,16 +161,14 @@ class TestConfig(AlignakTest):
         # Alignak name is defined in the configuration dispatched to the schedulers
         assert len(self.arbiter.dispatcher.schedulers) == 1
         for scheduler in self.arbiter.dispatcher.schedulers:
-            print(scheduler)
-            assert 'alignak_name' in scheduler.conf_part
-            assert scheduler.conf_part.get('alignak_name') == 'my_alignak'
+            assert 'alignak_name' in scheduler.cfg
+            assert scheduler.cfg.get('alignak_name') == 'My Alignak'
 
         # Alignak name is defined in the configuration dispatched to the satellites
         assert len(self.arbiter.dispatcher.satellites) == 4
         for satellite in self.arbiter.dispatcher.satellites:
-            print(satellite.cfg)
             assert 'alignak_name' in satellite.cfg
-            assert satellite.cfg.get('alignak_name') == 'my_alignak'
+            assert satellite.cfg.get('alignak_name') == 'My Alignak'
 
     def test_config_ok_no_declared_daemons(self):
         """ Default configuration has no loading problems ... but no daemons are defined

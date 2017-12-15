@@ -178,8 +178,8 @@ class SatelliteLink(Item):
             self.create_connection()
 
     def __repr__(self):
-        return '<%r (%s) %r/%r, uri: %r />' % (self.__class__.__name__, self.uuid,
-                                               self.type, self.name, self.uri)
+        return '<%r (%s) %r/%r, uri: %r, spare: %r />' \
+               % (self.__class__.__name__, self.uuid, self.type, self.name, self.uri, self.spare)
     __str__ = __repr__
 
     def get_name(self):

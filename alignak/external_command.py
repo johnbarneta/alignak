@@ -601,8 +601,8 @@ class ExternalCommandManager:
             sched = self.daemon.get_sched_from_hname(host_name)
             if sched:
                 host_found = True
-                logger.debug("Receiver pushing external command to scheduler %s", sched['name'])
-                sched['external_commands'].append(extcmd)
+                logger.debug("Receiver pushing external command to scheduler %s", sched.name)
+                sched.external_commands.append(extcmd)
         else:
             for cfg in self.confs.values():
                 if cfg.hosts.find_by_name(host_name) is not None:
@@ -610,7 +610,7 @@ class ExternalCommandManager:
                     if cfg.is_assigned:
                         host_found = True
                         sched = cfg.assigned_to
-                        logger.debug("Sending command to the scheduler %s", sched.get_name())
+                        logger.debug("Sending command to the scheduler %s", sched.name)
                         # sched.run_external_command(command)
                         sched.external_commands.append(command)
                         break

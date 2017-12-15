@@ -269,7 +269,7 @@ class Receiver(Satellite):
                 # Send global command to all our schedulers
                 for scheduler_id in self.schedulers:
                     scheduler = self.schedulers[scheduler_id]
-                    scheduler['external_commands'].append(ext_cmd)
+                    scheduler.external_commands.append(ext_cmd)
 
         # Now for all alive schedulers, send the commands
         pushed_commands = 0

@@ -124,7 +124,8 @@ class TestConfig(PropertiesTester, AlignakTest):
         'free_child_process_memory', 'child_processes_fork_twice',
         'admin_email', 'admin_pager', 'event_broker_options',
         'debug_file', 'debug_level', 'debug_verbosity',
-        'max_debug_file_size']
+        'max_debug_file_size', 'translate_passive_host_checks', 'passive_host_checks_are_soft'
+    ]
 
     without_default = []
 
@@ -186,8 +187,6 @@ class TestConfig(PropertiesTester, AlignakTest):
         ('auto_reschedule_checks', True),
         ('auto_rescheduling_interval', 1),
         ('auto_rescheduling_window', 180),
-        ('translate_passive_host_checks', True),
-        ('passive_host_checks_are_soft', False),
         ('enable_predictive_host_dependency_checks', True),
         ('enable_predictive_service_dependency_checks', True),
         ('cached_host_check_horizon', 0),

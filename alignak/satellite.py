@@ -184,7 +184,7 @@ class BaseSatellite(Daemon):
         :rtype: alignak.objects.SatelliteLinks
         """
         print("Get '%s' satellites list for: %s / %s" % (s_type if s_type else 'All', self.type, self.name))
-        print("Self: %s / %s" % (self, self.__dict__))
+        # print("Self: %s / %s" % (self, self.__dict__))
         satellites = {
             'arbiter': getattr(self, 'arbiters', []),
             'scheduler': getattr(self, 'schedulers', []),
@@ -193,8 +193,7 @@ class BaseSatellite(Daemon):
             'reactionner': getattr(self, 'reactionners', []),
             'receiver': getattr(self, 'receivers', [])
         }
-        print("Schedulers: %s" % (self.schedulers))
-        print("Schedulers: %s" % (getattr(self, 'schedulers', [])))
+        # print("Schedulers: %s" % (self.schedulers))
         if not s_type:
             print("Return all known satellites")
             result = {}
@@ -205,10 +204,10 @@ class BaseSatellite(Daemon):
                 for sat_uuid in satellites[sat_type]:
                     print(" . %s" % sat_uuid)
                     result[sat_uuid] = satellites[sat_type][sat_uuid]
-            print(result)
+            print("Result: %s" % result)
             return result
         if s_type in satellites:
-            print(s_type, satellites[s_type])
+            print("Result: %s / %s" % (s_type, satellites[s_type]))
             return satellites[s_type]
 
         print("Get satellites list returns None")
