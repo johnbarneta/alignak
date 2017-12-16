@@ -132,7 +132,7 @@ class TestAcknowledges(AlignakTest):
         time.sleep(0.1)
         assert "DOWN" == host_router.state
         assert "HARD" == host_router.state_type
-        assert "UP" == host.state
+        assert "UNREACHABLE" == host.state
         assert "HARD" == host.state_type
 
         self.scheduler_loop(1, [[host, 2, 'DOWN']])
@@ -265,8 +265,7 @@ class TestAcknowledges(AlignakTest):
         host_router.event_handler_enabled = False
         host_router.notifications_enabled = False
 
-        svc = self._scheduler.services.find_srv_by_name_and_hostname("test_host_0",
-                                                                              "test_ok_0")
+        svc = self._scheduler.services.find_srv_by_name_and_hostname("test_host_0", "test_ok_0")
         svc.checks_in_progress = []
         svc.act_depend_of = []  # no hostchecks on critical checkresults
 
@@ -293,7 +292,7 @@ class TestAcknowledges(AlignakTest):
         time.sleep(0.1)
         assert "DOWN" == host_router.state
         assert "HARD" == host_router.state_type
-        assert "UP" == host.state
+        assert "UNREACHABLE" == host.state
         assert "HARD" == host.state_type
 
         self.scheduler_loop(1, [[host, 2, 'DOWN']])

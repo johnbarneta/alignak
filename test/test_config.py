@@ -41,7 +41,7 @@ class TestConfig(AlignakTest):
         :return: None
         """
         self.print_header()
-        self.setup_with_file('../etc/alignak.cfg')
+        self.setup_with_file('../etc/alignak.cfg', './alignak.ini')
         assert self.conf_is_correct
 
         # No error messages

@@ -1788,12 +1788,12 @@ class Scheduler(object):  # pylint: disable=R0902
             "low_service_flap_threshold": self.conf.low_service_flap_threshold,
             "high_host_flap_threshold": self.conf.high_host_flap_threshold,
             "high_service_flap_threshold": self.conf.high_service_flap_threshold,
-
-            # Stats
-            "statsd_enabled": self.conf.statsd_enabled,
-            "statsd_host": self.conf.statsd_host,
-            "statsd_port": self.conf.statsd_port,
-            "statsd_prefix": self.conf.statsd_prefix,
+            #
+            # # Stats
+            # "statsd_enabled": self.conf.statsd_enabled,
+            # "statsd_host": self.conf.statsd_host,
+            # "statsd_port": self.conf.statsd_port,
+            # "statsd_prefix": self.conf.statsd_prefix,
         }
         logger.debug("Program status brok data: %s", data)
         brok = Brok({'type': 'program_status', 'data': data})

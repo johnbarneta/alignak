@@ -321,11 +321,6 @@ class Item(AlignakObject):
         """
         # Simply call the super class method
         super(Item, self).fill_default()
-        # cls = self.__class__
-        #
-        # for prop, entry in cls.properties.items():
-        #     if not hasattr(self, prop) and entry.has_default:
-        #         setattr(self, prop, entry.default)
 
     def serialize(self):
         """This function serialize into a simple dict object.
@@ -371,12 +366,10 @@ class Item(AlignakObject):
         :type global_configuration: object
         :return: None
         """
+        logger.debug("Propagate global parameter for %s:", cls)
         for property, entry in global_configuration.properties.items():
-            # If some global configuration properties have a class_inherit clause,
-            if not getattr(entry, 'class_inherit'):
-                continue
-            # and the property is really set
-            if not getattr(global_configuration, property, False):
+            # If some global managed configuration properties have a class_inherit clause,
+            if not entry.managed or not getattr(entry, 'class_inherit'):
                 continue
             for (cls_dest, change_name) in entry.class_inherit:
                 if cls_dest == cls:  # ok, we've got something to get

@@ -23,7 +23,7 @@
 
 import uuid
 from copy import copy
-from alignak.property import SetProp, StringProp
+from alignak.property import NONE_OBJECT, SetProp, StringProp
 
 
 class AlignakObject(object):
@@ -82,7 +82,9 @@ class AlignakObject(object):
         cls = self.__class__
 
         for prop, entry in cls.properties.items():
-            if not hasattr(self, prop) and entry.has_default:
+            if not hasattr(self, prop) \
+                    and hasattr(entry, 'default') \
+                    and entry.default is not NONE_OBJECT:
                 if hasattr(entry.default, '__iter__'):
                     setattr(self, prop, copy(entry.default))
                 else:
