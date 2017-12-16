@@ -304,14 +304,18 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                         logger.info("  updating daemon Cfg file configuration")
                     else:
                         new_cfg_daemons.append(cfg_daemon)
+                # # My new satellite link...
+                # from alignak.objects.satellitelink import SatelliteLink
+                # new_link = SatelliteLink.get_a_satellite_link(daemon_cfg['type'], {})
+                # print("Properties: %s / %s" % (daemon_cfg['type'], ','.join([prop for prop in new_link.properties])))
                 new_cfg_daemons.append(daemon_cfg)
                 raw_objects[daemon_cfg['type']] = new_cfg_daemons
 
-            logger.warning("Daemons configuration:")
+            logger.info("Daemons configuration:")
             for daemon_type in ['arbiter', 'scheduler', 'broker',
                                 'poller', 'reactionner', 'receiver']:
                 for cfg_daemon in raw_objects[daemon_type]:
-                    logger.warning(" - %s / %s", daemon_type, cfg_daemon)
+                    logger.info(" - %s / %s", daemon_type, cfg_daemon)
 
             # and then get all modules from the configuration
             logger.info("Getting modules configuration...")
@@ -343,7 +347,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         # Search which arbiter I am in the arbiter links list
         for lnk_arbiter in self.conf.arbiters:
-            logger.info("I have an arbiter in my configuration: %s", lnk_arbiter.name)
+            logger.debug("I have an arbiter in my configuration: %s", lnk_arbiter.name)
             if lnk_arbiter.name != self.name:
                 # Arbiter is not me!
                 logger.info("I found another arbiter in my configuration: %s", lnk_arbiter.name)
@@ -556,7 +560,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
 
         # Some properties need to be "flatten" (put in strings)
         # before being sent, like realms for hosts for example
-        # BEWARE: after the cutting part, because we stringify some properties
+        # BEWARE: after the cutting part, because we stringified some properties
         self.conf.prepare_for_sending()
         # Here, the self.conf.spare_arbiter_conf exist and each realm has its configuration
 
@@ -617,8 +621,11 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                     continue
 
                 args = ["alignak-%s" % daemon_type, "--name", daemon_name,
-                        "--port", str(daemon.port),
-                        "--local_log", "%s/%s.log" % (daemon_log_folder, daemon_name)]
+                        "--environment", self.env_filename,
+                        "--host", str(daemon.host), "--port", str(daemon.port)]
+                        # # "--debug", "1",
+                        # "--local_log", "%s/%s.log" % (daemon_log_folder, daemon_name),
+                        # "--pid_file", "%s/%s.pid" % (daemon_log_folder, daemon_name)]
                 if daemon_arguments:
                     args.append(daemon_arguments)
                 logger.info("Trying to launch daemon: %s...", daemon_name)

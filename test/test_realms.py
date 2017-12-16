@@ -71,14 +71,14 @@ class TestRealms(AlignakTest):
         assert self.conf_is_correct
         self.show_logs()
 
-        self.assert_any_log_match(re.escape("No realms defined, I added one as All"))
-        self.assert_any_log_match(re.escape("No poller defined, I add one at localhost:7771"))
-        self.assert_any_log_match(re.escape("No reactionner defined, I add one at localhost:7769"))
-        self.assert_any_log_match(re.escape("No broker defined, I add one at localhost:7772"))
+        self.assert_any_log_match(re.escape("No realms defined, I am adding one as All"))
+        self.assert_any_log_match(re.escape("No poller defined, I am adding one at localhost:7771"))
+        self.assert_any_log_match(re.escape("No reactionner defined, I am adding one at localhost:7769"))
+        self.assert_any_log_match(re.escape("No broker defined, I am adding one at localhost:7772"))
         self.assert_any_log_match(re.escape("Tagging Default-Poller with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Broker with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Reactionner with realm All"))
-        self.assert_any_log_match(re.escape("Prepare dispatching for this realm"))
+        # self.assert_any_log_match(re.escape("Prepare dispatching for this realm"))
 
         # Only one realm in the configuration
         assert len(self.arbiter.conf.realms) == 1
@@ -118,14 +118,13 @@ class TestRealms(AlignakTest):
         assert self.conf_is_correct
         self.show_logs()
 
-        self.assert_any_log_match(re.escape("No realms defined, I added one as All"))
-        self.assert_any_log_match(re.escape("No poller defined, I add one at localhost:7771"))
-        self.assert_any_log_match(re.escape("No reactionner defined, I add one at localhost:7769"))
-        self.assert_any_log_match(re.escape("No broker defined, I add one at localhost:7772"))
+        self.assert_any_log_match(re.escape("No realms defined, I am adding one as All"))
+        self.assert_any_log_match(re.escape("No poller defined, I am adding one at localhost:7771"))
+        self.assert_any_log_match(re.escape("No reactionner defined, I am adding one at localhost:7769"))
+        self.assert_any_log_match(re.escape("No broker defined, I am adding one at localhost:7772"))
         self.assert_any_log_match(re.escape("Tagging Default-Poller with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Broker with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Reactionner with realm All"))
-        self.assert_any_log_match(re.escape("Prepare dispatching for this realm"))
 
         # Only one realm in the configuration
         assert len(self.arbiter.conf.realms) == 1
@@ -166,16 +165,16 @@ class TestRealms(AlignakTest):
         assert self.conf_is_correct
         self.show_logs()
 
-        self.assert_any_log_match(re.escape("No realms defined, I added one as All"))
-        self.assert_any_log_match(re.escape("No scheduler defined, I add one at localhost:7768"))
-        self.assert_any_log_match(re.escape("No poller defined, I add one at localhost:7771"))
-        self.assert_any_log_match(re.escape("No reactionner defined, I add one at localhost:7769"))
-        self.assert_any_log_match(re.escape("No broker defined, I add one at localhost:7772"))
+        self.assert_any_log_match(re.escape("No realms defined, I am adding one as All"))
+        self.assert_any_log_match(re.escape("No scheduler defined, I am adding one at localhost:7768"))
+        self.assert_any_log_match(re.escape("No poller defined, I am adding one at localhost:7771"))
+        self.assert_any_log_match(re.escape("No reactionner defined, I am adding one at localhost:7769"))
+        self.assert_any_log_match(re.escape("No broker defined, I am adding one at localhost:7772"))
         self.assert_any_log_match(re.escape("Tagging Default-Poller with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Broker with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Reactionner with realm All"))
         self.assert_any_log_match(re.escape("Tagging Default-Scheduler with realm All"))
-        self.assert_any_log_match(re.escape("Prepare dispatching for this realm"))
+        # self.assert_any_log_match(re.escape("Prepare dispatching for this realm"))
 
         scheduler_link = self.arbiter.conf.schedulers.find_by_name('Default-Scheduler')
         assert scheduler_link is not None

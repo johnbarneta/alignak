@@ -237,6 +237,11 @@ class Stats(object):
         if 'ALIGNAK_STATS_FILE_DATE_FMT' in os.environ:
             self.date_fmt = os.environ['ALIGNAK_STATS_FILE_DATE_FMT']
 
+    def __repr__(self):
+        return '<StatsD report to %r/%r, enabled: %r />' \
+               % (self.host, self.port, self.statsd_enabled)
+    __str__ = __repr__
+
     def register(self, name, _type,
                  statsd_host='localhost', statsd_port=8125, statsd_prefix='alignak',
                  statsd_enabled=False, broks_enabled=False):
@@ -264,6 +269,12 @@ class Stats(object):
         # local statsd part
         self.statsd_host = statsd_host
         self.statsd_port = int(statsd_port)
+        # try:
+        #     self.statsd_port = int(statsd_port)
+        # except ValueError:
+        #     self.statsd_port = 8125
+        #     logger.warning("Setting StatsD port as : 8125, "
+        #                    "provided value is not a valid port number!")
         self.statsd_prefix = statsd_prefix
         self.statsd_enabled = statsd_enabled
 

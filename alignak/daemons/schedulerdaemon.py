@@ -272,21 +272,22 @@ class Alignak(BaseSatellite):
             logger.info("Conf received at %d. Un-serialized in %d secs", t00, time.time() - t00)
 
             # Now we create our pollers, reactionners and brokers
-            received_satellites = self.cur_conf['satellites']
             for link_type in ['pollers', 'reactionners', 'brokers']:
-                logger.debug("[%s] - received %s: %s",
-                             self.name, link_type, received_satellites[link_type])
-                if link_type not in received_satellites:
+                if link_type not in self.cur_conf['satellites']:
                     logger.error("[%s] Missing %s in the configuration!", self.name, link_type)
                     print("***[%s] Missing %s in the configuration!!!" % (self.name, link_type))
                     continue
+
+                received_satellites = self.cur_conf['satellites'][link_type]
+                logger.debug("[%s] - received %s: %s", self.name, link_type, received_satellites)
                 my_satellites = getattr(self, link_type)
                 print("My %s satellites: %s" % (link_type, my_satellites))
-                for link_uuid in received_satellites[link_type]:
-                    print("- %s" % (link_uuid))
+                print("My %s received satellites:" % (link_type))
+                for link_uuid in received_satellites:
+                    print("- %s / %s" % (link_uuid, received_satellites[link_uuid]))
                     logger.debug("[%s] - my current %s: %s", self.name, link_type, my_satellites)
                     # Must look if we already had a configuration and save our broks
-                    already_got = link_uuid in my_satellites
+                    already_got = received_satellites.get('_id') in my_satellites
                     if already_got:
                         print("Already got!")
                         broks = my_satellites[link_uuid]['broks']
@@ -297,7 +298,8 @@ class Alignak(BaseSatellite):
 
                     # My new satellite link...
                     new_link = SatelliteLink.get_a_satellite_link(
-                        link_type[:-1], received_satellites[link_type][link_uuid])
+                        link_type[:-1], received_satellites[link_uuid])
+                    print("My new %s satellite: %s" % (link_type, new_link))
                     my_satellites[link_uuid] = new_link
                     new_link.running_id = running_id
                     new_link.broks = broks
@@ -314,14 +316,14 @@ class Alignak(BaseSatellite):
 
                 logger.debug("We have our %s: %s", link_type, my_satellites)
                 logger.info("We have our %s:", link_type)
-                print("Satellites: %s" % link_type)
+                print("We have our %s" % link_type)
                 for sat_link in my_satellites.values():
-                    logger.info(" - %s, %s", sat_link.name, sat_link.uri)
-                    print(" - %s, %s" % (sat_link.name, sat_link.uri))
+                    logger.info(" - %s, %s", sat_link.name, sat_link.address)
+                    print(" - %s, %s" % (sat_link.name, sat_link))
 
             # First mix conf and override_conf to have our definitive conf
             for prop in self.cur_conf['override_conf']:
-                print(prop, self.cur_conf['override_conf'])
+                print("Overriding: %s / %s " % (prop, self.cur_conf['override_conf']))
                 setattr(self.conf, prop, self.cur_conf['override_conf'].get(prop, None))
 
             # Scheduler modules

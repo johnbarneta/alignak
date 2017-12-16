@@ -62,7 +62,7 @@ import logging
 from alignak_test import AlignakTest
 
 from alignak.version import VERSION
-from alignak.daemon import InvalidPidFile, InvalidWorkDir
+from alignak.daemon import InvalidPidFile, InvalidWorkingDir
 from alignak.daemons.pollerdaemon import Poller
 from alignak.daemons.brokerdaemon import Broker
 from alignak.daemons.schedulerdaemon import Alignak
@@ -362,7 +362,7 @@ class template_Daemon_Start():
         daemon = self.get_daemon()
         daemon.workdir = '/DONOTEXISTS'
 
-        with pytest.raises(InvalidWorkDir):
+        with pytest.raises(InvalidWorkingDir):
             self.start_daemon(daemon)
         daemon.do_stop()
 

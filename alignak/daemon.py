@@ -159,16 +159,35 @@ REDIRECT_TO = getattr(os, "devnull", "/dev/null")
 UMASK = 027
 
 
-class InvalidWorkDir(Exception):
-    """Exception raised when daemon workdir is invalid"""
-    pass
+class EnvironmentFile(Exception):
+    """Exception raised when the Alignak environment file is missing or corrupted"""
+
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Alignak environment file is missing or corrupted"
+        Exception.__init__(self, msg)
+
+
+class InvalidWorkingDir(Exception):
+    """Exception raised when daemon working directory is invalid"""
+
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Invalid working directory"
+        Exception.__init__(self, msg)
 
 
 class InvalidPidFile(Exception):
     """Exception raised when a pid file is invalid"""
-    pass
 
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Invalid PID file"
+        Exception.__init__(self, msg)
 
+# This default value is used to declare the properties that are Path properties
+# During the daemon initialization, this value is replaced with the real daemon working directory
+# and it will be overloaded with the value defined in the daemon configuration or launch parameters
 DEFAULT_WORK_DIR = './'
 
 
@@ -187,19 +206,21 @@ class Daemon(object):
             StringProp(),
         'env_filename':
             StringProp(default=''),
+        'use_log_file':
+            BoolProp(default=True),
         'log_filename':
             StringProp(default=''),
         'pid_filename':
             StringProp(default=''),
-        'etcdir':
+        'etcdir':   # /usr/local/etc/alignak
             PathProp(default=DEFAULT_WORK_DIR),
-        'workdir':
+        # 'rundir':   # /usr/local/var/run/alignak
+        #     PathProp(default=DEFAULT_WORK_DIR),
+        'workdir':  # /usr/local/var/run/alignak
             PathProp(default=DEFAULT_WORK_DIR),
-        'rundir':
+        'vardir':   # /usr/local/var/lib/alignak
             PathProp(default=DEFAULT_WORK_DIR),
-        'vardir':
-            PathProp(default=DEFAULT_WORK_DIR),
-        'logdir':
+        'logdir':# /usr/local/var/log/alignak
             PathProp(default=DEFAULT_WORK_DIR),
         'host':
             StringProp(default='0.0.0.0'),
@@ -217,12 +238,8 @@ class Daemon(object):
             StringProp(default=''),
         'server_cert':
             StringProp(default='etc/certs/server.cert'),
-        'pidfile':
-            StringProp(default=''),
-        'use_local_log':
-            BoolProp(default=True),
-        'local_log':
-            StringProp(default=''),
+        # 'pidfile':
+        #     StringProp(default=''),
         'human_timestamp_log':
             BoolProp(default=True),
         'human_date_format':
@@ -258,7 +275,17 @@ class Daemon(object):
         'debug_output':
             ListProp(default=[]),
         'monitoring_config_files':
-            ListProp(default=[])
+            ListProp(default=[]),
+
+        # Local statsd daemon for collecting daemon metrics
+        'statsd_host':
+            StringProp(default='localhost'),
+        'statsd_port':
+            IntegerProp(default=8125),
+        'statsd_prefix':
+            StringProp(default='alignak'),
+        'statsd_enabled':
+            BoolProp(default=False)
     }
 
     def __init__(self, name, **kwargs):
@@ -288,18 +315,28 @@ class Daemon(object):
         # Check if /dev/shm exists and usable...
         self.check_shm()
 
+        self.pre_log.append(("DEBUG",
+                             "Daemon '%s' initial working directory: %s"
+                             % (self.name, os.getcwd())))
+
         # I define my default properties
-        cls = self.__class__
-        for prop, entry in cls.properties.items():
-            if getattr(self, prop, None) is None:
-                # Set absolute paths for our paths
-                if isinstance(prop, PathProp):
-                    setattr(self, prop, os.path.abspath(entry.pythonize(entry.default)))
+        # Same as the Item.fill_default()... but I am not in this object hierarchy!
+        my_properties = self.__class__.properties
+        for prop, entry in my_properties.items():
+            if getattr(self, prop, None) is not None:
+                #  Still initialized...
+                continue
+            # Set absolute paths for our paths
+            if isinstance(my_properties[prop], PathProp):
+                if entry.default == DEFAULT_WORK_DIR:
+                    setattr(self, prop, os.getcwd())
                 else:
-                    if hasattr(entry.default, '__iter__'):
-                        setattr(self, prop, copy(entry.default))
-                    else:
-                        setattr(self, prop, entry.pythonize(entry.default))
+                    setattr(self, prop, os.path.abspath(entry.pythonize(entry.default)))
+            else:
+                if hasattr(entry.default, '__iter__'):
+                    setattr(self, prop, copy(entry.default))
+                else:
+                    setattr(self, prop, entry.pythonize(entry.default))
 
         # Self daemon monitoring (cpu, memory)
         self.daemon_monitoring = False
@@ -315,91 +352,96 @@ class Daemon(object):
             logger.info("Daemon '%s' self monitoring is enabled, reporting every %d loop count.",
                         self.name, self.daemon_monitoring_period)
 
+        # I almost certainly got an Alignak environment file
+        if 'env_file' not in kwargs:
+            raise EnvironmentFile
+
+        self.env_filename = kwargs['env_file']
+        if self.env_filename != os.path.abspath(self.env_filename):
+            self.env_filename = os.path.abspath(self.env_filename)
+        print("Daemon '%s' is started with an environment file: %s"
+              % (self.name, self.env_filename))
         self.pre_log.append(("DEBUG",
-                             "Daemon '%s' initial working directory: %s"
-                             % (self.name, os.getcwd())))
+                             "Daemon '%s' is started with an environment file: %s"
+                             % (self.name, self.env_filename)))
 
-        # I probably got an Alignak environment file
-        if 'env_file' in kwargs:
-            self.env_filename = kwargs['env_file']
-            print("Daemon '%s' is started with an environment file: %s"
-                  % (self.name, self.env_filename))
-            self.pre_log.append(("DEBUG",
-                                 "Daemon '%s' is started with an environment file: %s"
-                                 % (self.name, self.env_filename)))
+        # Read Alignak environment file
+        args = {'<cfg_file>': self.env_filename, '--verbose': self.debug}
+        configuration_dir = os.path.dirname(self.env_filename)
+        try:
+            self.alignak_env = AlignakConfigParser(args)
+            self.alignak_env.parse()
 
-            # Read Alignak environment file
-            args = {'<cfg_file>': self.env_filename, '--verbose': self.debug}
-            configuration_dir = os.path.dirname(self.env_filename)
-            try:
-                self.alignak_env = AlignakConfigParser(args)
-                self.alignak_env.parse()
+            for prop, value in self.alignak_env.get_monitored_configuration().items():
+                print(" found Alignak monitoring configuration parameter, %s = %s" % (prop, value))
+                self.pre_log.append(("DEBUG",
+                                     " found Alignak monitoring "
+                                     "configuration parameter, %s = %s" % (prop, value)))
+                print(prop, value)
+                # Ignore empty value
+                if not value:
+                    continue
 
-                for prop, value in self.alignak_env.get_monitored_configuration().items():
-                    print(" found Alignak monitoring configuration parameter, %s = %s" % (prop, value))
-                    self.pre_log.append(("DEBUG",
-                                         " found Alignak monitoring "
-                                         "configuration parameter, %s = %s" % (prop, value)))
-                    # Ignore empty value
-                    if not value:
-                        continue
+                # Make the path absolute
+                if not os.path.isabs(value):
+                    value = os.path.abspath(os.path.join(configuration_dir, value))
+                self.monitoring_config_files.append(value)
 
-                    # Make the path absolute
-                    if not os.path.isabs(value):
-                        value = os.path.abspath(os.path.join(configuration_dir, value))
-                    self.monitoring_config_files.append(value)
+            for prop, value in self.alignak_env.get_daemons(name=self.name).items():
+                self.pre_log.append(("DEBUG",
+                                     " found daemon parameter, %s = %s" % (prop, value)))
+                if getattr(self, prop, None) is None:
+                    # For an undeclared property, store the value as a string
+                    setattr(self, prop, value)
+                    self.pre_log.append(("DEBUG", " -> setting %s = %s" % (prop, value)))
+                elif callable(getattr(self, prop)):
+                    # For a declared property, that match a self function name
+                    raise EnvironmentFile("Variable %s cannot be defined as a property because "
+                                          "it exists a callable function with the same name!"
+                                          % prop)
+                else:
+                    # For a declared property, cast the read value
+                    current_prop = getattr(self, prop)
+                    setattr(self, prop, my_properties[prop].pythonize(value))
+                    self.pre_log.append(("DEBUG", " -> updating %s = %s to %s"
+                                         % (prop, current_prop, getattr(self, prop))))
 
-                for prop, value in self.alignak_env.get_daemons(name=self.name).items():
-                    self.pre_log.append(("DEBUG",
-                                         " found daemon parameter, %s = %s" % (prop, value)))
-                    if getattr(self, prop, None) is None:
-                        # For an undeclared property, store the value as a string
-                        setattr(self, prop, value)
-                        self.pre_log.append(("DEBUG", " -> setting %s = %s" % (prop, value)))
-                    elif callable(getattr(self, prop)):
-                        # For a declared property, that match a self function name
-                        raise ValueError("Property %s cannot be defined "
-                                         "as a daemon property!" % prop)
-                    else:
-                        # For a declared property, cast the read value
-                        current_prop = getattr(self, prop)
-                        setattr(self, prop, cls.properties[prop].pythonize(value))
-                        self.pre_log.append(("DEBUG", " -> updating %s = %s to %s"
-                                             % (prop, current_prop, getattr(self, prop))))
-
-            except ValueError as exp:
-                print("Daemon '%s' did not correctly read Alignak environment file: %s"
-                      % (self.name, args['<cfg_file>']))
-                print("Exception: %s\n%s" % (exp, traceback.format_exc()))
+        except ValueError as exp:
+            print("Daemon '%s' did not correctly read Alignak environment file: %s"
+                  % (self.name, args['<cfg_file>']))
+            print("Exception: %s\n%s" % (exp, traceback.format_exc()))
+            raise EnvironmentFile("Exception: %s" % (exp))
 
         # And perhaps some other parameters from the initial command line
-        self.config_file = None
         if 'config_file' in kwargs and kwargs['config_file']:
-            self.config_file = kwargs['config_file']
-        if self.config_file:
             warnings.warn(
                 "Using daemon configuration file is now deprecated. The daemon -c parameter "
                 "should not be used anymore in favor the -e environment file parameter.",
                 DeprecationWarning, stacklevel=2)
+            raise EnvironmentFile("Using daemon configuration file is now deprecated. "
+                                  "The daemon -c command line parameter should not be "
+                                  "used anymore in favor the -e environment file parameter.")
 
         if 'daemon_enabled' in kwargs:
-            self.daemon_enabled = kwargs['daemon_enabled']
+            self.daemon_enabled = BoolProp().pythonize(kwargs['daemon_enabled'])
         if 'is_daemon' in kwargs:
-            self.is_daemon = kwargs['is_daemon']
+            self.is_daemon = BoolProp().pythonize(kwargs['is_daemon'])
         if 'do_replace' in kwargs:
-            self.do_replace = kwargs['do_replace']
+            self.do_replace = BoolProp().pythonize(kwargs['do_replace'])
         if 'debug' in kwargs:
-            self.debug = kwargs['debug']
+            self.debug = BoolProp().pythonize(kwargs['debug'])
         if 'debug_file' in kwargs and kwargs['debug_file']:
-            self.debug_file = kwargs['debug_file']
-        if getattr(self, 'port', None) is not None:
-            self.port = int(getattr(self, 'port'))
-        if 'max_queue_size' in kwargs and kwargs['max_queue_size']:
-            self.max_queue_size = int(kwargs['max_queue_size'])
+            self.debug_file = PathProp().pythonize(kwargs['debug_file'])
+
+        if 'host' in kwargs and kwargs['host']:
+            self.host = StringProp().pythonize(kwargs['host'])
         if 'port' in kwargs and kwargs['port']:
-            self.port = int(kwargs['port'])
-            print("Daemon '%s' is started with an overidden port number: %d"
-                  % (self.name, self.port))
+            try:
+                self.port = int(kwargs['port'])
+                print("Daemon '%s' is started with an overidden port number: %d"
+                      % (self.name, self.port))
+            except ValueError:
+                pass
 
         if self.debug:
             print("Daemon '%s' is in debug mode" % self.name)
@@ -408,57 +450,78 @@ class Daemon(object):
             print("Daemon '%s' is in daemon mode" % self.name)
 
         # Make my paths properties be absolute paths
-        properties = self.__class__.properties
-        for prop, entry in properties.items():
+        for prop, entry in my_properties.items():
             # Set absolute paths for
-            if isinstance(properties[prop], PathProp):
+            if isinstance(my_properties[prop], PathProp):
                 setattr(self, prop, os.path.abspath(getattr(self, prop)))
 
-        # Default log file is stored in the log directory
-        if not getattr(self, 'local_log', None):
-            self.local_log = os.path.join(self.logdir, self.name + ".log")
+        # Log file...
+        self.log_filename = PathProp().pythonize("%s.log" % self.name)
+        self.log_filename = os.path.abspath(os.path.join(self.logdir, self.log_filename))
 
-        if 'local_log' in kwargs and kwargs['local_log']:
-            self.local_log = kwargs['local_log']
-        self.log_filename = os.path.abspath(self.local_log)
-        dirname = os.path.dirname(self.local_log)
+        if 'log_filename' in kwargs and kwargs['log_filename']:
+            self.log_filename = PathProp().pythonize(kwargs['log_filename'])
+            # Make it an absolute path file in the log directory
+            if self.log_filename != os.path.abspath(self.log_filename):
+                if self.log_filename:
+                    self.log_filename = os.path.abspath(os.path.join(self.logdir, self.log_filename))
+                    print("Daemon '%s' is started with an overidden log file: %s"
+                          % (self.name, self.log_filename))
+                else:
+                    self.use_log_file = False
+                    print("Daemon '%s' will not log to a file: %s" % (self.name))
+
+        dirname = os.path.dirname(self.log_filename)
         try:
             os.makedirs(dirname)
-            print("Daemon '%s' log directory did not exist, I created: %s"
-                  % (self.name, dirname))
-        except OSError as exc:  # Python >2.5
-            if exc.errno == errno.EEXIST and os.path.isdir(dirname):
+            print("Daemon '%s' log directory did not exist, I created: %s" % (self.name, dirname))
+            self.pre_log.append(("WARNING",
+                                 "Daemon '%s' log directory did not exist, I created: %s"
+                                 % (self.name, dirname)))
+        except OSError as exp:
+            if exp.errno == errno.EEXIST and os.path.isdir(dirname):
+                # Directory still exists...
                 pass
             else:
-                raise
-        if 'local_log' in kwargs and kwargs['local_log']:
-            print("Daemon '%s' is started with an overidden log file: %s"
-                  % (self.name, self.local_log))
-        else:
-            print("Daemon '%s' log file: %s" % (self.name, self.log_filename))
+                self.pre_log.append(("ERROR",
+                                     "Daemon '%s' log directory did not exist, "
+                                      "and I could not create: %s. Exception: %s" 
+                                      % (self.name, dirname, exp)))
+                raise EnvironmentFile("Daemon '%s' log directory did not exist, "
+                                      "and I could not create: '%s'. Exception: %s"
+                                      % (self.name, dirname, exp))
 
         # pid file is stored in the working directory
         self.pid = 0
-        if not getattr(self, 'pidfile', None):
-            self.pidfile = os.path.join(self.workdir, self.name + ".pid")
-        if 'pidfile' in kwargs and kwargs['pidfile']:
-            self.pidfile = kwargs['pidfile']
-        self.pid_filename = os.path.abspath(self.pidfile)
+        self.pid_filename = PathProp().pythonize("%s.pid" % self.name)
+        self.pid_filename = os.path.abspath(os.path.join(self.workdir, self.pid_filename))
+        if 'pid_filename' in kwargs and kwargs['pid_filename']:
+            self.pid_filename = PathProp().pythonize(kwargs['pid_filename'])
+            # Make it an absolute path file in the pid directory
+            if self.pid_filename != os.path.abspath(self.pid_filename):
+                self.pid_filename = os.path.abspath(os.path.join(self.workdir, self.pid_filename))
+            print("Daemon '%s' is started with an overidden pid file: %s" 
+                  % (self.name, self.pid_filename))
+
         dirname = os.path.dirname(self.pid_filename)
         try:
             os.makedirs(dirname)
-            print("Daemon '%s' run directory did not exist, I created: %s"
-                  % (self.name, dirname))
-        except OSError as exc:  # Python >2.5
-            if exc.errno == errno.EEXIST and os.path.isdir(dirname):
+            print("Daemon '%s' pid directory did not exist, I created: %s" % (self.name, dirname))
+            self.pre_log.append(("WARNING",
+                                 "Daemon '%s' pid directory did not exist, I created: %s"
+                                 % (self.name, dirname)))
+        except OSError as exp:
+            if exp.errno == errno.EEXIST and os.path.isdir(dirname):
+                # Directory still exists...
                 pass
             else:
-                raise
-        if 'pidfile' in kwargs and kwargs['pidfile']:
-            print("Daemon '%s' is started with an overidden pid file: %s"
-                  % (self.name, self.pid_filename))
-        else:
-            print("Daemon '%s' pid file: %s" % (self.name, self.pid_filename))
+                self.pre_pid.append(("ERROR",
+                                     "Daemon '%s' pid directory did not exist, "
+                                      "and I could not create: %s. Exception: %s" 
+                                      % (self.name, dirname, exp)))
+                raise EnvironmentFile("Daemon '%s' pid directory did not exist, "
+                                      "and I could not create: %s. Exception: %s" 
+                                      % (self.name, dirname, exp))
 
         # Track time
         now = time.time()
@@ -471,10 +534,11 @@ class Daemon(object):
         self.http_thread = None
         self.http_daemon = None
 
+        # Configuration dispatch
         self.new_conf = None
         self.cur_conf = None
         self.conf_lock = threading.RLock()
-        self.lock = threading.RLock()
+        # self.lock = threading.RLock()
 
         # Flag to know if we need to dump memory or not
         self.need_dump_memory = False
@@ -485,7 +549,7 @@ class Daemon(object):
         # Flag to reload configuration
         self.need_config_reload = False
 
-        # Keep a trace of the file descriptors allocated by the logger
+        # Track the file descriptors allocated by the logger
         self.local_log_fds = None
 
         # Log loop turns if environment variable is set
@@ -748,7 +812,7 @@ class Daemon(object):
         try:
             os.chdir(self.workdir)
         except Exception, exp:
-            raise InvalidWorkDir(exp)
+            raise InvalidWorkingDir(exp)
         self.pre_log.append(("INFO", "Using working directory: %s" % os.path.abspath(self.workdir)))
 
     def unlink(self):
@@ -1016,22 +1080,6 @@ class Daemon(object):
         else:
             self.write_pid()
 
-        # # We can now output some previously silenced debug output
-        # We can now output some previously silenced debug output
-        logger.debug("--- Messages stored prior to our daemonization:")
-        for level, message in self.pre_log:
-            if level.lower() == "debug":
-                logger.debug("--- %s", message)
-            elif level.lower() == "info":
-                logger.info("--- %s", message)
-            elif level.lower() == "warning":
-                logger.warning("--- %s", message)
-        logger.debug("---")
-
-        # logger.debug("Printing stored debug messages prior to our daemonization:")
-        # for stored in self.debug_output:
-        #     logger.debug("- %s", stored)
-        #
         logger.info("Creating synchronization manager...")
         self.sync_manager = self._create_manager()
         logger.info("Created")
@@ -1293,35 +1341,6 @@ class Daemon(object):
             raise
         logger.info("HTTP main thread exiting")
 
-    def handle_requests(self, timeout, suppl_socks=None):
-        # pylint: disable=no-self-use, unused-argument
-        """ Wait up to timeout to handle the requests.
-        If suppl_socks is given it also looks for activity on that list of fd.
-
-        @mohierf, this function is never called with `suppl_socks`! Its behavior is
-         to replace the select on the sockets by a time.sleep() for the duration of
-         the provided timoeut... resulting in the caller daemon to sleep!
-         So I remove this useless parameter and the get_socks_activity function to
-         replace with a time.sleep(timeout) call.
-
-        :param timeout: timeout to wait for activity
-        :type timeout: float
-        :param suppl_socks: list of fd to wait for activity
-        :type suppl_socks: None | list
-        :return:Returns a 3-tuple:
-        * If timeout: first arg is 0, second is [], third is possible system time change value
-        *  If not timeout (== some fd got activity):
-            - first arg is elapsed time since wait,
-            - second arg is sublist of suppl_socks that got activity.
-            - third arg is possible system time change value, or 0 if no change
-        :rtype: tuple
-        """
-        warnings.warn("handle_requests is now deprecated. The daemon using this function "
-                      "must use the make_a_pause function instead.",
-                      DeprecationWarning, stacklevel=2)
-        time.sleep(timeout)
-        return timeout, [], 0
-
     def make_a_pause(self, timeout=0.0001, check_time_change=True):
         """ Wait up to timeout and check for system time change.
 
@@ -1385,11 +1404,9 @@ class Daemon(object):
         # If we have more than 15 min time change, we need to compensate it
         # todo: confirm that 15 minutes is a good choice...
         if abs(difference) > 900:  # pragma: no cover, not with unit tests...
-            if hasattr(self, "sched"):
-                self.compensate_system_time_change(difference,
-                                                   self.sched.timeperiods)  # pylint: disable=E1101
-            else:
-                self.compensate_system_time_change(difference, None)
+            self.compensate_system_time_change(
+                difference,
+                self.sched.timeperiods if hasattr(self, "sched") else None)
         else:
             difference = 0
 
@@ -1578,7 +1595,7 @@ class Daemon(object):
         human_log_format = getattr(self, 'human_timestamp_log', False)
 
         # Register local log file if required
-        if getattr(self, 'use_local_log', False):
+        if self.use_log_file:
             try:
                 # pylint: disable=E1101
                 setup_logger(None, level=log_level, human_log=human_log_format,
@@ -1587,9 +1604,9 @@ class Daemon(object):
                              backup_count=self.log_rotation_count,
                              human_date_format=self.human_date_format)
             except IOError as exp:  # pragma: no cover, not with unit tests...
-                logger.error("Opening the log file '%s' failed with '%s'", self.local_log, exp)
+                logger.error("Opening the log file '%s' failed with '%s'", self.log_filename, exp)
                 sys.exit(2)
-            logger.debug("Using the local log file '%s'", self.local_log)
+            logger.debug("Using the local log file '%s'", self.log_filename)
             self.local_log_fds = get_logger_fds(None)
         else:  # pragma: no cover, not with unit tests...
             setup_logger(None, level=log_level, human_log=human_log_format,
@@ -1601,3 +1618,15 @@ class Daemon(object):
         # Log daemon header
         for line in self.get_header():
             logger.info(line)
+
+        # We can now output some previously silenced debug output
+        if self.pre_log:
+            logger.debug("--- Messages stored prior to our configuration:")
+            for level, message in self.pre_log:
+                if level.lower() == "debug":
+                    logger.debug("--- %s", message)
+                elif level.lower() == "info":
+                    logger.info("--- %s", message)
+                elif level.lower() == "warning":
+                    logger.warning("--- %s", message)
+            logger.debug("---")

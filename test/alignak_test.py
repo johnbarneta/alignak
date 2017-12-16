@@ -35,6 +35,8 @@ import unittest2
 import logging
 from logging import Handler
 
+import requests_mock
+
 import alignak
 from alignak.bin.alignak_environment import AlignakConfigParser
 from alignak.log import DEFAULT_FORMATTER_NAMED, ROOT_LOGGER_NAME
@@ -197,165 +199,164 @@ class AlignakTest(unittest2.TestCase):
         if arbiter_cfg:
             arbiter_name = arbiter_cfg['name']
 
-        # Using default values that are usually provided by the command line parameters
-        args = {
-            'env_file': self.env_filename,
-            'alignak_name': 'alignak-test', 'daemon_name': arbiter_name,
-            'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
-            'config_file': None, 'debug': False, 'debug_file': None,
-            'monitoring_files': [configuration_file],
-            'local_log': '/tmp/arbiter.log', 'verify_only': False, 'port': None
-        }
-        self.arbiter = Arbiter(**args)
+        # Simulate the daemons HTTP interface (very simple simulation !)
+        with requests_mock.mock() as mockreq:
+            for port in ['7768', '7769', '7770', '7771', '7772', '7773']:
+                mockreq.get('http://localhost:%s/ping' % port, json='pong')
+                mockreq.get('http://localhost:%s/get_running_id' % port, json=123456)
+                mockreq.get('http://localhost:%s/what_i_managed' % port, json='{}')
 
-        try:
-            # The following is copy paste from setup_alignak_logger
-            # The only difference is that it keeps logger at INFO level to gather messages
-            # This is needed to assert later on logs we received.
-            self.logger.setLevel(logging.INFO)
-            # Force the debug level if the daemon is said to start with such level
-            if self.arbiter.debug:
-                self.logger.setLevel(logging.DEBUG)
-
-            for line in self.arbiter.get_header():
-                self.logger.info(line)
-
-            # Load and initialize the arbiter configuration
-            self.arbiter.load_monitoring_config_file()
-
-            # If this assertion does not match, then there is a bug in the arbiter :)
-            self.assertTrue(self.arbiter.conf.conf_is_correct)
-            self.conf_is_correct = True
-            self.configuration_warnings = self.arbiter.conf.configuration_warnings
-            self.configuration_errors = self.arbiter.conf.configuration_errors
-        except SystemExit:
-            self.configuration_warnings = self.arbiter.conf.configuration_warnings
-            self.configuration_errors = self.arbiter.conf.configuration_errors
-            self.show_configuration_logs()
-            self.show_logs()
-            raise
-
-        # Prepare the configuration dispatching
-        for arbiter_link in self.arbiter.conf.arbiters:
-            if arbiter_link.get_name() == self.arbiter.arbiter_name:
-                self.arbiter.link_to_myself = arbiter_link
-        assert arbiter_link is not None, "There is no arbiter link in the configuration!"
-
-        self.arbiter.dispatcher = Dispatcher(self.arbiter.conf, self.arbiter.link_to_myself)
-        self.arbiter.dispatcher.check_alive(test=True)
-        self.arbiter.dispatcher.check_dispatch(test=True)
-        self.arbiter.dispatcher.prepare_dispatch(test=True)
-        self.arbiter.dispatcher.dispatch(test=True)
-        # Create an Arbiter external commands manager in dispatcher mode
-        self.arbiter.external_commands_manager = ExternalCommandManager(self.arbiter.conf,
-                                                                        'dispatcher',
-                                                                        self.arbiter,
-                                                                        accept_unknown=True)
-
-        print("-----\nConfiguration got dispatched.")
-
-        # Check that all the daemons links got a configuration
-        for sat_type in ('arbiters', 'schedulers', 'reactionners',
-                         'brokers', 'receivers', 'pollers'):
-            print("- for %s:" % (sat_type))
-            for sat_link in getattr(self.arbiter.dispatcher, sat_type):
-                print(" - %s" % (sat_link))
-                pushed_configuration = getattr(sat_link, 'unit_test_pushed_configuration', None)
-                if pushed_configuration:
-                    # print("- %s / %s" % (sat_link.name, pushed_configuration))
-                    print(" - pushed configuration, contains:")
-                    for key in pushed_configuration:
-                        print("   . %s = %s" % (key, pushed_configuration[key]))
-
-        self.eca = None
-        for scheduler in self.arbiter.dispatcher.schedulers:
-            print("-----\nGot a scheduler: %s (%s)" % (scheduler.name, scheduler))
-            # Simulate the scheduler daemon start
+            # Using default values that are usually provided by the command line parameters
             args = {
-                'env_file': self.env_filename, 'daemon_name': scheduler.name,
-                'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
-                'config_file': None, 'debug': False, 'debug_file': None,
-                'local_log': "/tmp/%s.log" % scheduler.get_name(), 'port': None
+                'env_file': self.env_filename,
+                'alignak_name': 'alignak-test', 'daemon_name': arbiter_name,
+                # 'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
+                # 'config_file': None, 'debug': False, 'debug_file': None,
+                'monitoring_files': [configuration_file],
+                # 'log_filename': '/tmp/arbiter.log', 'pid_filename': '/tmp/arbiter.pid',
+                # 'verify_only': False, 'host': None, 'port': None
             }
-            self._scheduler_daemon = Alignak(**args)
-            self._scheduler_daemon.load_modules_manager(scheduler.name)
+            self.arbiter = Arbiter(**args)
 
-            # Simulate the scheduler daemon receiving the configuration from its arbiter
-            pushed_configuration = scheduler.unit_test_pushed_configuration
-            self._scheduler_daemon.new_conf = pushed_configuration
-            self._scheduler_daemon.setup_new_conf()
-            # todo: what for?
-            self.schedulers[scheduler.name] = self._scheduler_daemon
+            try:
+                # Configure the logger
+                # self.arbiter.debug = True
+                self.arbiter.setup_alignak_logger()
 
-            # Now create the scheduler external commands manager
-            # We are an applyer: our role is not to dispatch commands, but to apply them
-            self.eca = ExternalCommandManager(self._scheduler_daemon.conf, 'applyer', self._scheduler_daemon.sched)
-            # Scheduler needs to know about this external command manager to use it if necessary
-            self._scheduler_daemon.sched.set_external_commands_manager(self.eca)
+                # Load and initialize the arbiter configuration
+                self.arbiter.load_monitoring_config_file()
 
-            # Store the last scheduler object to get used in some other functions!
-            # this is the real scheduler, not the scheduler daemon
-            self._scheduler = self._scheduler_daemon.sched
-            print("Got a default scheduler: %s\n-----" % self._scheduler)
-            for broker_link in self._scheduler_daemon.brokers:
-                broker_link = self._scheduler_daemon.brokers[broker_link]
-                print("-----\n- with a broker: %s" % broker_link)
-                for broker in self.arbiter.dispatcher.brokers:
-                    if broker.name != broker_link.name:
-                        continue
-                    print("- found in the arbiter configuration: %s" % broker.name)
+                # If this assertion does not match, then there is a bug in the arbiter :)
+                self.assertTrue(self.arbiter.conf.conf_is_correct)
+                self.conf_is_correct = True
+                self.configuration_warnings = self.arbiter.conf.configuration_warnings
+                self.configuration_errors = self.arbiter.conf.configuration_errors
+            except SystemExit:
+                self.configuration_warnings = self.arbiter.conf.configuration_warnings
+                self.configuration_errors = self.arbiter.conf.configuration_errors
+                self.show_configuration_logs()
+                self.show_logs()
+                raise
 
-                    # # Do create a broker daemon
-                    # args = {
-                    #     'env_file': self.env_filename, 'daemon_name': broker.get_name(),
-                    #     'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
-                    #     'config_file': None, 'debug': False, 'debug_file': None,
-                    #     'local_log': "/tmp/%s.log" % broker.get_name(), 'port': None
-                    # }
-                    # broker_daemon = Broker(**args)
-                    # broker_daemon.load_modules_manager(broker.get_name())
-                    # broker_daemon.new_conf = broker.cfg
-                    # if broker_daemon.new_conf:
-                    #     broker_daemon.setup_new_conf()
-                    # self._broker = broker_daemon
-                    self._broker = broker_link
-                    self._broker.broks = {}
-                    print("Got a default broker: %s" % self._broker)
+            # Prepare the configuration dispatching
+            for arbiter_link in self.arbiter.conf.arbiters:
+                if arbiter_link.get_name() == self.arbiter.arbiter_name:
+                    self.arbiter.link_to_myself = arbiter_link
+            assert arbiter_link is not None, "There is no arbiter link in the configuration!"
 
-        # Initialize a Receiver daemon
-        self._receiver = None
-        for receiver in self.arbiter.dispatcher.receivers:
-            print("-----\nGot a receiver: %s (%s)" % (receiver.name, receiver))
-            # Simulate the scheduler daemon start
-            args = {
-                'env_file': self.env_filename, 'daemon_name': receiver.name,
-                'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
-                'config_file': None, 'debug': False, 'debug_file': None,
-                'local_log': "/tmp/%s.log" % receiver.get_name(), 'port': None
-            }
-            self._receiver_daemon = Receiver(**args)
-            self._receiver_daemon.load_modules_manager(receiver.get_name())
+            self.arbiter.dispatcher = Dispatcher(self.arbiter.conf, self.arbiter.link_to_myself)
+            self.arbiter.dispatcher.check_alive(test=True)
+            self.arbiter.dispatcher.check_dispatch(test=True)
+            self.arbiter.dispatcher.prepare_dispatch(test=True)
+            self.arbiter.dispatcher.dispatch(test=True)
+            # Create an Arbiter external commands manager in dispatcher mode
+            self.arbiter.external_commands_manager = ExternalCommandManager(self.arbiter.conf,
+                                                                            'dispatcher',
+                                                                            self.arbiter,
+                                                                            accept_unknown=True)
 
-            # Simulate the scheduler daemon receiving the configuration from its arbiter
-            pushed_configuration = receiver.unit_test_pushed_configuration
-            self._receiver_daemon.new_conf = pushed_configuration
-            self._receiver_daemon.setup_new_conf()
-            self._receiver = receiver
-            print("Got a default receiver: %s\n-----" % self._receiver)
+            print("-----\nConfiguration got dispatched.")
+
+            # Check that all the daemons links got a configuration
+            for sat_type in ('arbiters', 'schedulers', 'reactionners',
+                             'brokers', 'receivers', 'pollers'):
+                print("- for %s:" % (sat_type))
+                for sat_link in getattr(self.arbiter.dispatcher, sat_type):
+                    print(" - %s" % (sat_link))
+                    pushed_configuration = getattr(sat_link, 'unit_test_pushed_configuration', None)
+                    if pushed_configuration:
+                        # print("- %s / %s" % (sat_link.name, pushed_configuration))
+                        print(" - pushed configuration, contains:")
+                        for key in pushed_configuration:
+                            print("   . %s = %s" % (key, pushed_configuration[key]))
+
+            self.eca = None
+            for scheduler in self.arbiter.dispatcher.schedulers:
+                print("-----\nGot a scheduler: %s (%s)" % (scheduler.name, scheduler))
+                # Simulate the scheduler daemon start
+                args = {
+                    'env_file': self.env_filename, 'daemon_name': scheduler.name,
+                }
+                self._scheduler_daemon = Alignak(**args)
+                self._scheduler_daemon.setup_alignak_logger()
+                self._scheduler_daemon.load_modules_manager(scheduler.name)
+
+                # Simulate the scheduler daemon receiving the configuration from its arbiter
+                pushed_configuration = scheduler.unit_test_pushed_configuration
+                self._scheduler_daemon.new_conf = pushed_configuration
+                self._scheduler_daemon.setup_new_conf()
+                # todo: what for?
+                self.schedulers[scheduler.name] = self._scheduler_daemon
+
+                # Now create the scheduler external commands manager
+                # We are an applyer: our role is not to dispatch commands, but to apply them
+                self.eca = ExternalCommandManager(self._scheduler_daemon.conf, 'applyer', self._scheduler_daemon.sched)
+                # Scheduler needs to know about this external command manager to use it if necessary
+                self._scheduler_daemon.sched.set_external_commands_manager(self.eca)
+
+                # Store the last scheduler object to get used in some other functions!
+                # this is the real scheduler, not the scheduler daemon
+                self._scheduler = self._scheduler_daemon.sched
+                print("Got a default scheduler: %s\n-----" % self._scheduler)
+                for broker_link in self._scheduler_daemon.brokers:
+                    broker_link = self._scheduler_daemon.brokers[broker_link]
+                    print("-----\n- with a broker: %s" % broker_link)
+                    for broker in self.arbiter.dispatcher.brokers:
+                        if broker.name != broker_link.name:
+                            continue
+                        print("- found in the arbiter configuration: %s" % broker.name)
+
+                        # # Do create a broker daemon
+                        # args = {
+                        #     'env_file': self.env_filename, 'daemon_name': broker.get_name(),
+                        #     'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
+                        #     'config_file': None, 'debug': False, 'debug_file': None,
+                        #     'local_log': "/tmp/%s.log" % broker.get_name(), 'port': None
+                        # }
+                        # broker_daemon = Broker(**args)
+                        # broker_daemon.load_modules_manager(broker.get_name())
+                        # broker_daemon.new_conf = broker.cfg
+                        # if broker_daemon.new_conf:
+                        #     broker_daemon.setup_new_conf()
+                        # self._broker = broker_daemon
+                        self._broker = broker_link
+                        self._broker.broks = {}
+                        print("Got a default broker: %s" % self._broker)
+
+            # Initialize a Receiver daemon
+            self._receiver = None
+            for receiver in self.arbiter.dispatcher.receivers:
+                print("-----\nGot a receiver: %s (%s)" % (receiver.name, receiver))
+                # Simulate the scheduler daemon start
+                args = {
+                    'env_file': self.env_filename, 'daemon_name': receiver.name,
+                    'daemon_enabled': False, 'do_replace': False, 'is_daemon': False,
+                    'config_file': None, 'debug': False, 'debug_file': None,
+                    'local_log': "/tmp/%s.log" % receiver.get_name(), 'port': None
+                }
+                self._receiver_daemon = Receiver(**args)
+                self._receiver_daemon.load_modules_manager(receiver.get_name())
+
+                # Simulate the scheduler daemon receiving the configuration from its arbiter
+                pushed_configuration = receiver.unit_test_pushed_configuration
+                self._receiver_daemon.new_conf = pushed_configuration
+                self._receiver_daemon.setup_new_conf()
+                self._receiver = receiver
+                print("Got a default receiver: %s\n-----" % self._receiver)
 
 
-        self.ecm_mode = 'applyer'
+            self.ecm_mode = 'applyer'
 
-        # Now we create an external commands manager in receiver mode
-        self.ecr = None
-        if self._receiver:
-            self.ecr = ExternalCommandManager(None, 'receiver', self._receiver_daemon,
+            # Now we create an external commands manager in receiver mode
+            self.ecr = None
+            if self._receiver:
+                self.ecr = ExternalCommandManager(None, 'receiver', self._receiver_daemon,
+                                                  accept_unknown=True)
+                self._receiver.external_commands_manager = self.ecr
+
+            # and an external commands manager in dispatcher mode for the arbiter
+            self.ecd = ExternalCommandManager(self.arbiter.conf, 'dispatcher', self.arbiter,
                                               accept_unknown=True)
-            self._receiver.external_commands_manager = self.ecr
-
-        # and an external commands manager in dispatcher mode for the arbiter
-        self.ecd = ExternalCommandManager(self.arbiter.conf, 'dispatcher', self.arbiter,
-                                          accept_unknown=True)
 
     def fake_check(self, ref, exit_status, output="OK"):
         """
@@ -1043,8 +1044,44 @@ class AlignakTest(unittest2.TestCase):
             or 'ascii'
         )
 
-# Time hacking for every test!
-time_hacker = AlignakTest.time_hacker
+    def safe_print(self, *args, **kw):
+        """" "print" args to sys.stdout,
+        If some of the args aren't unicode then convert them first to unicode,
+            using keyword argument 'in_encoding' if provided (else default to UTF8)
+            and replacing bad encoded bytes.
+        Write to stdout using 'out_encoding' if provided else best guessed encoding,
+            doing xmlcharrefreplace on errors.
+        """
+        in_bytes_encoding = kw.pop('in_encoding', 'UTF-8')
+        out_encoding = kw.pop('out_encoding', self.guess_sys_stdout_encoding())
+        if kw:
+            raise ValueError('unhandled named/keyword argument(s): %r' % kw)
+        #
+        make_in_data_gen = lambda: ( a if isinstance(a, unicode)
+                                    else
+                                unicode(str(a), in_bytes_encoding, 'replace')
+                            for a in args )
+
+        possible_codings = ( out_encoding, )
+        if out_encoding != 'ascii':
+            possible_codings += ( 'ascii', )
+
+        for coding in possible_codings:
+            data = u' '.join(make_in_data_gen()).encode(coding, 'xmlcharrefreplace')
+            try:
+                sys.stdout.write(data)
+                break
+            except UnicodeError as err:
+                # there might still have some problem with the underlying sys.stdout.
+                # it might be a StringIO whose content could be decoded/encoded in this same process
+                # and have encode/decode errors because we could have guessed a bad encoding with it.
+                # in such case fallback on 'ascii'
+                if coding == 'ascii':
+                    raise
+                sys.stderr.write('Error on write to sys.stdout with %s encoding: err=%s\nTrying with ascii' % (
+                    coding, err))
+        sys.stdout.write(b'\n')
+
 
 if __name__ == '__main__':
     unittest2.main()

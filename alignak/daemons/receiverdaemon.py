@@ -376,7 +376,7 @@ class Receiver(Satellite):
         # Maybe we do not have something to do, so we wait a little
         # todo: check broks in the receiver ???
         if not self.broks:
-            self.watch_for_new_conf(1.0)
+            self.watch_for_new_conf(0.1)
 
     def main(self):
         """Main receiver function

@@ -25,7 +25,7 @@ This file tests the dispatcher (distribute configuration to satellites)
 import time
 import pytest
 import requests_mock
-from requests.packages.urllib3.response import HTTPResponse
+# from requests.packages.urllib3.response import HTTPResponse
 from alignak_test import AlignakTest
 from alignak.misc.serialization import unserialize
 
@@ -152,11 +152,11 @@ class TestDispatcher(AlignakTest):
         for sat in self.arbiter.dispatcher.satellites:
             print("- %s" % sat)
         assert 8 == len(self.arbiter.dispatcher.satellites)
-        # 10 daemons links (2+8)
+        # 10 daemons links (2+8) + 1 arbiter
         print("All links: %s")
         for sat in self.arbiter.dispatcher.all_daemons_links:
             print("- %s" % sat)
-        assert 10 == len(self.arbiter.dispatcher.all_daemons_links)
+        assert 11 == len(self.arbiter.dispatcher.all_daemons_links)
 
         assert 6 == len(self.schedulers['scheduler-master'].sched.hosts)
         assert 4 == len(self.schedulers['realm2-scheduler-master'].sched.hosts)

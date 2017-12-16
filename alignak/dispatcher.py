@@ -164,7 +164,6 @@ class Dispatcher:
         print("Prepare satellites configuration:")
         for satellite in self.all_daemons_links:
             satellite.prepare_for_conf()
-            print("- %s: %s" % (satellite.name, satellite.cfg))
 
         # # Some properties must be given to satellites from global
         # # todo: This should not be necessary ! The pollers should have their own configuration!
@@ -567,7 +566,7 @@ class Dispatcher:
         if nb_missed > 0:
             logger.warning("All configuration parts are not dispatched, %d are missing", nb_missed)
         else:
-            logger.info("All configuration parts are dispatched :)")
+            logger.info("All configuration parts are assigned to schedulers :)")
 
         # Sched without conf in a dispatch ok are set to no need_conf
         # so they do not raise dispatch where no use
@@ -630,7 +629,7 @@ class Dispatcher:
 
             # Dump the configuration part size
             pickled_conf = cPickle.dumps(sat_link.cfg)
-            logger.info('[%s] %s configuration %s size: %d bytes',
+            logger.info('[%s] %s %s configuration size: %d bytes',
                         realm.name, sat_type, sat_link.name, sys.getsizeof(pickled_conf))
             print('- [%s] %s configuration %s size: %d bytes' % (
             realm.name, sat_type, sat_link.name, sys.getsizeof(pickled_conf)))
@@ -646,7 +645,7 @@ class Dispatcher:
 
         # I've got enough satellite, the next ones are considered unuseful!
         if nb_cfg_prepared == realm.get_nb_of_must_have_satellites(sat_type):
-            logger.info("[%s] OK, no more %s needed", realm.name, sat_type)
+            logger.info("[%s] Ok, no more %s needed", realm.name, sat_type)
             realm.to_satellites_need_dispatch[sat_type][part.uuid] = False
 
     def dispatch(self, test=False):

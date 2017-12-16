@@ -419,9 +419,9 @@ class Broker(BaseSatellite):
                 self.modules_manager.start_external_instances()
 
             # Initialize connection with all our satellites
-            # for sat_link in self.get_all_links():
-            #     print("Initialize connection with: %s" % sat_link)
-            #     self.daemon_connection_init(sat_link.uuid, s_type=sat_link.type)
+            for sat_link in self.get_all_links():
+                print("Initialize connection with: %s" % sat_link)
+                self.daemon_connection_init(sat_link.uuid, s_type=sat_link.type)
 
     def clean_previous_run(self):
         """Clean all (when we received new conf)

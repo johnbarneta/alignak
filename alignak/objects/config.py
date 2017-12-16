@@ -662,25 +662,25 @@ class Config(Item):  # pylint: disable=R0904,R0902
         'daemons_initial_port':
             IntegerProp(default=7800),
 
-        # Local statsd daemon for collecting Alignak internal statistics
-        'statsd_host':
-            StringProp(default='localhost',
-                       class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
-                                      (BrokerLink, None), (PollerLink, None),
-                                      (ReceiverLink, None), (ArbiterLink, None)]),
-        'statsd_port':
-            IntegerProp(default=8125,
-                        class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
-                                       (BrokerLink, None), (PollerLink, None),
-                                       (ReceiverLink, None), (ArbiterLink, None)]),
-        'statsd_prefix': StringProp(default='alignak',
-                                    class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
-                                                   (BrokerLink, None), (PollerLink, None),
-                                                   (ReceiverLink, None), (ArbiterLink, None)]),
-        'statsd_enabled': BoolProp(default=False,
-                                   class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
-                                                  (BrokerLink, None), (PollerLink, None),
-                                                  (ReceiverLink, None), (ArbiterLink, None)]),
+        # # Local statsd daemon for collecting Alignak internal statistics
+        # 'statsd_host':
+        #     StringProp(default='localhost',
+        #                class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
+        #                               (BrokerLink, None), (PollerLink, None),
+        #                               (ReceiverLink, None), (ArbiterLink, None)]),
+        # 'statsd_port':
+        #     IntegerProp(default=8125,
+        #                 class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
+        #                                (BrokerLink, None), (PollerLink, None),
+        #                                (ReceiverLink, None), (ArbiterLink, None)]),
+        # 'statsd_prefix': StringProp(default='alignak',
+        #                             class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
+        #                                            (BrokerLink, None), (PollerLink, None),
+        #                                            (ReceiverLink, None), (ArbiterLink, None)]),
+        # 'statsd_enabled': BoolProp(default=False,
+        #                            class_inherit=[(SchedulerLink, None), (ReactionnerLink, None),
+        #                                           (BrokerLink, None), (PollerLink, None),
+        #                                           (ReceiverLink, None), (ArbiterLink, None)]),
     }
 
     macros = {
@@ -1623,7 +1623,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
                 'realm_name': 'All', 'alias': 'Self created default realm', 'default': '1'
             })
             self.realms = Realms([default])
-            logger.warning("No realms defined, I added one as %s", default.get_name())
+            logger.warning("No realms defined, I am adding one as %s", default.get_name())
 
         # Check that a default realm (and only one) is defined and get this default realm
         self.realms.get_default(check=True)
@@ -1663,22 +1663,22 @@ class Config(Item):  # pylint: disable=R0904,R0902
         default_realm = self.realms.get_default()
 
         if not self.schedulers:
-            logger.warning("No scheduler defined, I add one at localhost:7768")
+            logger.warning("No scheduler defined, I am adding one at localhost:7768")
             daemon = SchedulerLink({'name': 'Default-Scheduler',
                                     'address': 'localhost', 'port': '7768'})
             self.schedulers = SchedulerLinks([daemon])
         if not self.pollers:
-            logger.warning("No poller defined, I add one at localhost:7771")
+            logger.warning("No poller defined, I am adding one at localhost:7771")
             poller = PollerLink({'name': 'Default-Poller',
                                  'address': 'localhost', 'port': '7771'})
             self.pollers = PollerLinks([poller])
         if not self.reactionners:
-            logger.warning("No reactionner defined, I add one at localhost:7769")
+            logger.warning("No reactionner defined, I am adding one at localhost:7769")
             reactionner = ReactionnerLink({'name': 'Default-Reactionner',
                                            'address': 'localhost', 'port': '7769'})
             self.reactionners = ReactionnerLinks([reactionner])
         if not self.brokers:
-            logger.warning("No broker defined, I add one at localhost:7772")
+            logger.warning("No broker defined, I am adding one at localhost:7772")
             broker = BrokerLink({'name': 'Default-Broker',
                                  'address': 'localhost', 'port': '7772',
                                  'manage_arbiters': '1'})
@@ -1723,7 +1723,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     continue
                 daemons_realms_names.add(daemon_realm_name)
                 # If the daemon manges sub realms, include the sub realms
-                if getattr(daemon, 'manage_sub_realms', None):
+                print("Daemon Manage sub realms: %s: %s" % (daemon.name, getattr(daemon, 'manage_sub_realms', False)))
+                if getattr(daemon, 'manage_sub_realms', False):
                     for realm in self.realms[realms_names_ids[daemon_realm_name]].all_sub_members:
                         daemons_realms_names.add(realm)
 
@@ -2114,7 +2115,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
         #             'pollers', 'brokers', 'receivers']:
         for _, _, strclss, _, _ in self.types_creations.values():
             if strclss in ['hostescalations', 'serviceescalations']:
-                logger.info("Ignoring correctness check for '%s'...", strclss)
+                logger.debug("Ignoring correctness check for '%s'...", strclss)
                 continue
 
             if not self.read_config_silent:
@@ -2486,14 +2487,14 @@ class Config(Item):  # pylint: disable=R0904,R0902
         nb_parts = sum(1 for s in self.schedulers if not s.spare)
 
         if nb_parts == 0:
-            logger.warning("Cutting the configuration into parts but I found no scheduler. "
+            logger.warning("Splitting the configuration into parts but I found no scheduler. "
                            "Considering that one exist anyway...")
             nb_parts = 1
 
         # We create dummy configurations for schedulers:
         # they are clone of the master configuration but without hosts and
         # services (because they are splitted between these configurations)
-        logger.info("Cutting the configuration into parts...")
+        logger.info("Splitting the configuration into parts...")
         self.parts = {}
         for pack_index in xrange(0, nb_parts):
             self.parts[pack_index] = Config()

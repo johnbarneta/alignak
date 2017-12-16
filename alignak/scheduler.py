@@ -361,16 +361,13 @@ class Scheduler(object):  # pylint: disable=R0902
         for key in sorted(self.conf.macros):
             logger.debug("- %s: %s", key, getattr(self.conf.macros, key, []))
         logger.debug("Objects types:")
-        print("Objects types:")
         for key in sorted(self.conf.types_creations):
             logger.debug("- %s: %s", key, getattr(self.conf.types_creations, key, []))
-            # print("- %s: %s" % (key, getattr(self.conf.types_creations, key, [])))
         for _, _, strclss, _, _ in self.conf.types_creations.values():
             if strclss in ['arbiters', 'schedulers', 'brokers',
                            'pollers', 'reactionners', 'receivers']:
                 continue
             setattr(self, strclss, getattr(self.conf, strclss, []))
-            print("- updated %s: %s" % (strclss, getattr(self, strclss)))
             # Internal statistics
             statsmgr.gauge('configuration.%s' % strclss, len(getattr(self, strclss)))
 
@@ -431,7 +428,7 @@ class Scheduler(object):  # pylint: disable=R0902
                 print("Changing the default tick to %d for the action %s" % (new_tick, name))
                 self.recurrent_works[key] = (name, fun, new_tick)
             except ValueError:
-                logger.warning("Changing the default tick for %s to %s failed!", new_tick, name)
+                logger.warning("Changing the default tick for '%s' to '%s' failed!", new_tick, name)
 
     def load_satellites(self, pollers, reactionners, brokers):
         """Setter for pollers, reactionners and brokers attributes

@@ -131,11 +131,15 @@ class BaseSatellite(Daemon):
 
         This function is called on each daemon loop turn. Basically it is a sleep...
 
+        If a new configuration was posted, this function returns True
+
         :param timeout: timeout to wait. Default is no wait time.
         :type timeout: float
         :return: None
         """
+        logger.debug("Watching for a new configuration, timeout: %s", timeout)
         self.make_a_pause(timeout=timeout)
+        return self.new_conf is not None
 
     def what_i_managed(self):
         """Get the managed configuration by this satellite
@@ -146,6 +150,7 @@ class BaseSatellite(Daemon):
         res = {}
         for (key, val) in self.schedulers.iteritems():
             res[key] = val['push_flavor']
+        logger.debug("Get managed configuration: %s", res)
         return res
 
     def get_external_commands(self):
@@ -155,23 +160,9 @@ class BaseSatellite(Daemon):
         :rtype: list
         """
         res = self.external_commands
+        logger.debug("Get and clear external commands list: %s", res)
         self.external_commands = []
         return res
-
-    @staticmethod
-    def is_connection_try_too_close(link, delay=5):
-        """Check if last_connection has been made very recently
-
-        :param link: connection with an Alignak daemon
-        :type link: list
-        :delay link: minimum delay between two connections
-        :type dealay: int
-        :return: True if last connection has been made less than `delay` seconds
-        :rtype: bool
-        """
-        if time.time() - link['last_connection'] < delay:
-            return True
-        return False
 
     def get_links_of_type(self, s_type=None):
         """Return the `s_type` satellite list (eg. schedulers)
@@ -249,6 +240,7 @@ class BaseSatellite(Daemon):
         :return: True if the connection is established
         """
         logger.debug("do_daemon_connection_init: %s %s", s_type, s_id)
+        print("do_daemon_connection_init: %s %s", s_type, s_id)
 
         # Get the appropriate links list...
         links = self.get_links_of_type(s_type)
@@ -257,121 +249,71 @@ class BaseSatellite(Daemon):
             return False
         # ... and check if required link exist in this list.
         if s_id not in links:
-            logger.warning("Unknown identifier '%s' for the %s connection!", s_id, s_type)
+            logger.error("Unknown identifier '%s' for the %s connection!", s_id, s_type)
             return False
 
         link = links[s_id]
+        print("Current link: %s" % type(link))
 
         # We do not want to initiate the connections to the passive
         # daemons (eg. pollers, reactionners)
-        if hasattr(link, 'passive') and link['passive']:
-            logger.error("Do not initialize connection with '%s' "
-                         "because it is configured as passive", link['name'])
+        if link.passive:
+            logger.error("Do not initialize connection with %s '%s' "
+                         "because it is configured as passive", link.type, link.name)
             return False
 
-        # If the link is a scheduler and it is not active, I do not try to init
-        # it is just useless
-        if not link['active']:
-            logger.warning("Scheduler '%s' is not active, "
-                           "do not initalize its connection!", link['name'])
+        # If the link is not not active, I do not try to init it is just useless
+        if not link.active:
+            logger.warning("%s '%s' is not active, "
+                           "do not initalize its connection!", link.type, link.name)
             return False
 
-        logger.info("Initializing connection with %s (%s), attempt: %d / %d",
-                    link['name'], s_id, link['connection_attempt'], link['max_failed_connections'])
+        # If we try to connect too much, we slow down our connection tries...
+        if link.is_connection_try_too_close(delay=5):
+            logger.info("Too close connection retry, postponed")
+            return False
 
-        # # If we try to connect too much, we slow down our connection tries...
-        # if self.is_connection_try_too_close(link, delay=5):
-        #     logger.info("Too close connection retry, postponed")
-        #     return False
-
-        # Get timeout for the daemon link (default defined in the satellite link...)
-        timeout = link['timeout']
-        data_timeout = link['data_timeout']
+        logger.info("Initializing connection with %s (%s/%s), attempt: %d / %d",
+                    link.instance_id, link.type, link.name,
+                    link.connection_attempt, link.max_failed_connections)
 
         # Ok, we now update our last connection attempt
-        link['last_connection'] = time.time()
+        link.last_connection = time.time()
         # and we increment the number of connection attempts
-        link['connection_attempt'] += 1
-
-        running_id = link['running_id']
-
-        # Create the HTTP client for the connection
-        try:
-            link['con'] = HTTPClient(uri=link['uri'],
-                                     strong_ssl=link['hard_ssl_name_check'],
-                                     timeout=timeout, data_timeout=data_timeout)
-        # Creating an HTTP client connection with requests do not raise any exception at all!
-        except Exception as exp:  # pylint: disable=broad-except
-            #  pragma: no cover, simple protection
-            logger.error("[%s] HTTPClient exception: %s", link['name'], str(exp))
-            link['con'] = None
-            return False
+        link.connection_attempt += 1
 
         # Get the connection running identifier - first client / server communication
-        try:
-            logger.debug("[%s] Getting running identifier from '%s'", self.name, link['name'])
-            _t0 = time.time()
-            new_running_id = link['con'].get('get_running_id')
-            statsmgr.timer('con-get-running-id.%s' % s_type, time.time() - _t0)
-            new_running_id = float(new_running_id)
+        logger.debug("[%s] Getting running identifier from '%s'", self.name, link.name)
+        _t0 = time.time()
+        changed = link.get_running_id()
+        statsmgr.timer('con-get-running-id.%s' % s_type, time.time() - _t0)
 
-            # If the daemon has been restarted: it has a new running_id.
-            # So we clear all verifications, they are obsolete now.
-            if new_running_id != running_id:
-                logger.info("[%s] The running id of the %s %s changed (%s -> %s), "
-                            "we must clear its actions",
-                            self.name, s_type, link['name'], running_id, new_running_id)
-                if hasattr(link, 'wait_homerun'):
-                    link['wait_homerun'].clear()
-                if hasattr(link, 'broks'):
-                    link['broks'].clear()
-
-            # Ok all is done, we can save this new running identifier
-            link['running_id'] = new_running_id
-        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
-            logger.warning("Connection error with the %s '%s' when getting running id",
-                           s_type, link['name'])
-            link['con'] = None
-            return False
-        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
-            logger.warning("Connection timeout with the %s '%s' when getting running id",
-                           s_type, link['name'])
-            link['con'] = None
-            return False
-        except HTTPClientException as exp:  # pragma: no cover, simple protection
-            logger.error("Error with the %s '%s' when getting running id: %s",
-                         s_type, link['name'], str(exp))
-            link['con'] = None
-            return False
+        # If the daemon has been restarted: it has a new running_id.
+        # So we clear all verifications, they are obsolete now.
+        if changed:
+            logger.info("[%s] The running id of the %s %s changed (%s), "
+                        "we must clear its context.",
+                        self.name, s_type, link.name, link.running_id)
+            if hasattr(link, 'external_commands'):
+                link.external_commands.clear()
+            if hasattr(link, 'wait_homerun'):
+                link.wait_homerun.clear()
+            if hasattr(link, 'broks'):
+                link.broks.clear()
 
         # If I am a broker and I reconnect to my scheduler
         # pylint: disable=E1101
         if self.type == 'broker' and s_type == 'scheduler':
-            logger.info("[%s] Asking initial broks from '%s'", self.name, link['name'])
-            try:
-                _t0 = time.time()
-                link['con'].get('fill_initial_broks', {'bname': self.name}, wait='long')
-                statsmgr.timer('con-fill-initial-broks.%s' % s_type, time.time() - _t0)
-            except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
-                logger.warning("Connection error with the %s '%s' when getting initial broks",
-                               s_type, link['name'])
-                link['con'] = None
-                return False
-            except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
-                logger.warning("Connection timeout with the %s '%s' when getting initial broks",
-                               s_type, link['name'])
-                link['con'] = None
-                return False
-            except HTTPClientException as exp:  # pragma: no cover, simple protection
-                logger.error("Error with the %s '%s' when getting initial broks: %s",
-                             s_type, link['name'], str(exp))
-                link['con'] = None
-                return False
+            logger.info("[%s] Asking my initial broks from '%s'", self.name, link.name)
+            _t0 = time.time()
+            if not link.get_initial_broks(self.name):
+                logger.warning("[%s] Initial broks were not raised :(", self.name)
+            statsmgr.timer('con-fill-initial-broks.%s' % s_type, time.time() - _t0)
 
         # Here, everything is ok, the connection was established and
         # we got the daemon running identifier!
-        link['connection_attempt'] = 0
-        logger.info("Connection OK with the %s: %s", s_type, link['name'])
+        link.connection_attempt = 0
+        logger.info("Connection OK with %s/%s", link.type, link.name)
         return True
 
     def get_previous_link(self, conf, link_uuid, link_type='scheduler'):
@@ -499,19 +441,22 @@ class BaseSatellite(Daemon):
 
             # Now we create our arbiters and schedulers links
             for link_type in ['arbiters', 'schedulers']:
-                received_satellites = self.cur_conf[link_type]
                 if link_type not in self.cur_conf:
                     logger.error("[%s] Missing %s in the configuration!", self.name, link_type)
                     print("***[%s] Missing %s in the configuration!!!" % (self.name, link_type))
                     continue
+
+                received_satellites = self.cur_conf[link_type]
+                logger.debug("[%s] - received %s: %s", self.name, link_type, received_satellites)
                 my_satellites = getattr(self, link_type, {})
                 print("My %s satellites: %s" % (link_type, my_satellites))
+                print("My %s received satellites:" % (link_type))
                 for link_uuid in received_satellites:
-                    print("- %s" % (link_uuid))
+                    print("- %s / %s" % (link_uuid, received_satellites[link_uuid]))
                     # Must look if we already had a configuration and save our context
                     # old_link_uuid = self.get_previous_link(self.cur_conf, link_uuid, link_type[:-11])
 
-                    already_got = link_uuid in my_satellites
+                    already_got = received_satellites.get('_id') in my_satellites
                     external_commands = {}
                     wait_homerun = {}
                     actions = {}
@@ -547,7 +492,7 @@ class BaseSatellite(Daemon):
                     if new_link.name in self_conf.get('satellitemap', {}):
                         overriding = self_conf.get('satellitemap')[new_link.name]
                         # satellite = dict(satellite)  # make a copy
-                        # new_link.update(self_conf.get('satellitemap', {})[new_link['name']])
+                        # new_link.update(self_conf.get('satellitemap', {})[new_link.name])
                         logger.warning("Do not override the configuration for: %s, with: %s. "
                                        "Please check whether this is necessary!",
                                        new_link.name, overriding)
@@ -1307,10 +1252,11 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
                     self.q_by_mod[module.get_name()] = {}
 
             # Initialize connection with all our satellites
+            print("***Get my satellites")
             my_satellites = self.get_links_of_type(s_type=None)
             for sat_link in my_satellites:
                 satellite = my_satellites[sat_link]
-                print("Initialize connection with: %s" % satellite)
+                print("***Initialize connection with: %s" % satellite)
                 self.daemon_connection_init(satellite.uuid, s_type=satellite.type)
 
     def get_stats_struct(self):

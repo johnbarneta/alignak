@@ -38,6 +38,7 @@ class GenericInterface(object):
         self.app = app
         self.start_time = int(time.time())
 
+        # Set a running identifier that will change if the attached daemon is restarted
         self.running_id = "%d.%d" % (
             self.start_time, random.randint(0, 100000000)
         )
@@ -74,7 +75,7 @@ class GenericInterface(object):
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def get_running_id(self):
-        """'Get the current running id of the daemon (scheduler)'
+        """Get the current running identifier of the daemon
 
         :return: running_ig
         :rtype: int

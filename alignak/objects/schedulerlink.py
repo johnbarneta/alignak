@@ -91,48 +91,6 @@ class SchedulerLink(SatelliteLink):
             IntegerProp(default=0),
     })
 
-    def run_external_commands(self, commands):  # pragma: no cover, seems not to be used anywhere
-        """
-        Run external commands
-
-        :param commands:
-        :type commands:
-        :return: False, None
-        :rtype: bool | None
-
-        TODO: this function seems to be used by the arbiter when it needs to make its schedulers
-        run external commands. Currently, it is not used, but will it be?
-
-        TODO: need to recode this function because return shouod always be boolean
-        """
-        logger.debug("[%s] run_external_commands", self.get_name())
-
-        if self.con is None:
-            self.create_connection()
-        if not self.alive:
-            return None
-        logger.debug("[%s] Sending %d commands", self.get_name(), len(commands))
-
-        try:
-            self.con.post('run_external_commands', {'cmds': commands})
-        except HTTPClientConnectionException as exp:
-            logger.warning("[%s] Connection error when sending run_external_commands",
-                           self.get_name())
-            self.add_failed_check_attempt(reason=str(exp))
-            self.set_dead()
-        except HTTPClientTimeoutException as exp:
-            logger.warning("[%s] Connection timeout when sending run_external_commands: %s",
-                           self.get_name(), str(exp))
-            self.add_failed_check_attempt(reason=str(exp))
-        except HTTPClientException as exp:  # pragma: no cover, simple protection
-            logger.error("[%s] Error when sending run_external_commands: %s",
-                         self.get_name(), str(exp))
-            self.con = None
-        else:
-            return True
-
-        return False
-
     def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
         """
         Add this reactionner to the realm

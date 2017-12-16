@@ -357,7 +357,7 @@ class Item(AlignakObject):
         return res
 
     @classmethod
-    def load_global_conf(cls, conf):
+    def load_global_conf(cls, global_configuration):
         """
         Apply global Alignak configuration.
 
@@ -367,22 +367,27 @@ class Item(AlignakObject):
 
         :param cls: parent object
         :type cls: object
-        :param conf: current object (child)
-        :type conf: object
+        :param global_configuration: current object (child)
+        :type global_configuration: object
         :return: None
         """
-        for prop, entry in conf.properties.items():
-            # If we have a class_inherit, and the arbiter really send us it
-            # if 'class_inherit' in entry and hasattr(conf, prop):
-            # todo: obviously conf has prop because prop is in conf items()!!!
-            if hasattr(conf, prop):
-                for (cls_dest, change_name) in entry.class_inherit:
-                    if cls_dest == cls:  # ok, we've got something to get
-                        value = getattr(conf, prop)
-                        if change_name is None:
-                            setattr(cls, prop, value)
-                        else:
-                            setattr(cls, change_name, value)
+        for property, entry in global_configuration.properties.items():
+            # If some global configuration properties have a class_inherit clause,
+            if not getattr(entry, 'class_inherit'):
+                continue
+            # and the property is really set
+            if not getattr(global_configuration, property, False):
+                continue
+            for (cls_dest, change_name) in entry.class_inherit:
+                if cls_dest == cls:  # ok, we've got something to get
+                    value = getattr(global_configuration, property)
+                    logger.debug("- global parameter %s=%s -> %s=%s",
+                                 property, getattr(global_configuration, property),
+                                 change_name, value)
+                    if change_name is None:
+                        setattr(cls, property, value)
+                    else:
+                        setattr(cls, change_name, value)
 
     def get_templates(self):
         """
