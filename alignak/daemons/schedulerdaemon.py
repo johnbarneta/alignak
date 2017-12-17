@@ -90,7 +90,8 @@ class Alignak(BaseSatellite):
 
         :param kwargs: command line arguments
         """
-        super(BaseSatellite, self).__init__(kwargs.get('daemon_name', 'Default-scheduler'), **kwargs)
+        super(BaseSatellite, self).__init__(kwargs.get('daemon_name',
+                                                       'Default-scheduler'), **kwargs)
 
         self.http_interface = SchedulerInterface(self)
         self.sched = Scheduler(self)
@@ -322,7 +323,8 @@ class Alignak(BaseSatellite):
                                        "Please check whether this is necessary!",
                                        new_link.name, overriding)
                         # satellite = dict(satellite)  # make a copy
-                        # satellite_object.update(self.cur_conf['override_conf'].get('satellitemap', {})[satellite_object.name])
+                        # satellite_object.update(self.cur_conf['override_conf'].
+                        # get('satellitemap', {})[satellite_object.name])
 
                 logger.debug("We have our %s: %s", link_type, my_satellites)
                 logger.info("We have our %s:", link_type)
@@ -374,7 +376,8 @@ class Alignak(BaseSatellite):
             # Now create the external commands manager
             # We are an applyer: our role is not to dispatch commands, but to apply them
             ecm = ExternalCommandManager(self.conf, 'applyer', self,
-                                         self_conf.get('accept_passive_unknown_check_results', False))
+                                         self_conf.get('accept_passive_unknown_check_results',
+                                                       False))
 
             # Scheduler needs to know about this external command manager to use it if necessary
             self.sched.set_external_commands_manager(ecm)

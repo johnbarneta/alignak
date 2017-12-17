@@ -84,4 +84,5 @@ class Reactionner(Satellite):
 
         :param kwargs: command line arguments
         """
-        super(Reactionner, self).__init__(kwargs.get('daemon_name', 'Default-reactionner'), **kwargs)
+        super(Reactionner, self).__init__(kwargs.get('daemon_name',
+                                                     'Default-reactionner'), **kwargs)

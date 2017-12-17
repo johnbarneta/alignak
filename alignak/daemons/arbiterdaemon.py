@@ -299,8 +299,8 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 new_cfg_daemons = []
                 for cfg_daemon in raw_objects[daemon_cfg['type']]:
                     if cfg_daemon.get('name', 'unset') == daemon_cfg['name'] \
-                            or cfg_daemon.get("%s_name" % daemon_cfg['type'], 'unset') \
-                                    == [daemon_cfg['name']]:
+                            or cfg_daemon.get("%s_name" % daemon_cfg['type'],
+                                              'unset') == [daemon_cfg['name']]:
                         logger.info("  updating daemon Cfg file configuration")
                     else:
                         new_cfg_daemons.append(cfg_daemon)
@@ -645,9 +645,6 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 args = ["alignak-%s" % daemon_type, "--name", daemon_name,
                         "--environment", self.env_filename,
                         "--host", str(daemon.host), "--port", str(daemon.port)]
-                        # # "--debug", "1",
-                        # "--local_log", "%s/%s.log" % (daemon_log_folder, daemon_name),
-                        # "--pid_file", "%s/%s.pid" % (daemon_log_folder, daemon_name)]
                 if daemon_arguments:
                     args.append(daemon_arguments)
                 logger.info("Trying to launch daemon: %s...", daemon_name)
@@ -1145,9 +1142,8 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         now = int(time.time())
         # call the daemon one
         res = super(Arbiter, self).get_stats_struct()
-        res.update({
-            'name': self.link_to_myself.get_name() if self.link_to_myself else self.name, 'type': 'arbiter'
-        })
+        res.update({'name': self.link_to_myself.get_name() if self.link_to_myself else self.name,
+                    'type': 'arbiter'})
         res['hosts'] = 0
         res['services'] = 0
         if self.conf:

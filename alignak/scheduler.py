@@ -394,7 +394,8 @@ class Scheduler(object):  # pylint: disable=R0902
 
         # Update our hosts/services freshness threshold
         # todo: necessary?
-        # Global configuration should have been updated in the items during the configuration parsing
+        # Global configuration should have been updated in the items during the
+        # configuration parsing
         # if self.conf.check_host_freshness and self.conf.host_freshness_check_interval >= 0:
         #     for host in self.hosts:
         #         if host.freshness_threshold == -1:

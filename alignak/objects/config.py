@@ -1632,8 +1632,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
         :return:
         """
-        daemons = [self.arbiters, self.schedulers, self.pollers, self.brokers,
-                      self.reactionners, self.receivers]
+        daemons = [self.arbiters, self.schedulers, self.pollers,
+                   self.brokers, self.reactionners, self.receivers]
         for daemons_list in daemons:
             if not daemons_list:
                 logger.info("- %ss: None", daemons_list.inner_class.my_type)
@@ -1729,7 +1729,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     continue
                 daemons_realms_names.add(daemon_realm_name)
                 # If the daemon manges sub realms, include the sub realms
-                print("Daemon Manage sub realms: %s: %s" % (daemon.name, getattr(daemon, 'manage_sub_realms', False)))
+                print("Daemon Manage sub realms: %s: %s"
+                      % (daemon.name, getattr(daemon, 'manage_sub_realms', False)))
                 if getattr(daemon, 'manage_sub_realms', False):
                     for realm in self.realms[realms_names_ids[daemon_realm_name]].all_sub_members:
                         daemons_realms_names.add(realm)
@@ -2144,7 +2145,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
             if checked_list.configuration_warnings:
                 self.configuration_warnings += checked_list.configuration_warnings
                 logger.warning("\t%s configuration warnings: %d, total: %d", strclss,
-                               len(checked_list.configuration_warnings), len(self.configuration_warnings))
+                               len(checked_list.configuration_warnings),
+                               len(self.configuration_warnings))
 
             if not self.read_config_silent:
                 try:
@@ -2537,7 +2539,8 @@ class Config(Item):  # pylint: disable=R0904,R0902
                 else:
                     setattr(self.parts[pack_index], inner_property, getattr(self, inner_property))
                 logger.debug("  . cloned %s: %s -> %s", inner_property,
-                             getattr(self, inner_property), getattr(self.parts[pack_index], inner_property))
+                             getattr(self, inner_property),
+                             getattr(self.parts[pack_index], inner_property))
 
             # The elements of the others conf will be tag here
             self.parts[pack_index].other_elements = {}
@@ -2694,7 +2697,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
         else:
             close = False
 
-        dump_file.write(json.dumps(config_dump, indent=4, separators=(',', ': '), sort_keys=True ))
+        dump_file.write(json.dumps(config_dump, indent=4, separators=(',', ': '), sort_keys=True))
         if close:
             dump_file.close()
 

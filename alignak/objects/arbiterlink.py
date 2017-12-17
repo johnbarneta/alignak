@@ -86,7 +86,6 @@ class ArbiterLink(SatelliteLink):
                     "from an arbiter point of view of addr:%s", self.host_name, socket.getfqdn())
         return self.host_name == socket.getfqdn() or self.host_name == socket.gethostname()
 
-
     def give_satellite_cfg(self):
         """
         Get configuration of the Arbiter satellite
@@ -175,7 +174,8 @@ class ArbiterLink(SatelliteLink):
             properties = []
 
         try:
-            return self.con.get('get_objects_properties', {'table': table, 'properties': properties})
+            return self.con.get('get_objects_properties', {'table': table,
+                                                           'properties': properties})
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when "
                                           "getting object properties: %s" % str(exp))

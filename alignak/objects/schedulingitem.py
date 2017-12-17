@@ -550,10 +550,8 @@ class SchedulingItem(Item):  # pylint: disable=R0902
                 setattr(trigger, 'trigger_broker_raise_enabled', self.trigger_broker_raise_enabled)
                 new_triggers.append(trigger.uuid)
             else:
-                self.add_error('the %s %s has an unknown trigger_name '
-                                                 '"%s"' % (self.__class__.my_type,
-                                                           self.get_full_name(),
-                                                           tname))
+                self.add_error("the %s %s has an unknown trigger_name '%s'"
+                               % (self.__class__.my_type, self.get_full_name(), tname))
         self.triggers = new_triggers
 
     def add_flapping_change(self, sample):

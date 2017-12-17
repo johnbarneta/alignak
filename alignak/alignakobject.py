@@ -28,7 +28,8 @@ from alignak.property import NONE_OBJECT, SetProp, StringProp
 
 class AlignakObject(object):
     """This class provides a generic way to instantiate alignak objects.
-    Attribute are serialized dynamically, whether we un-serialize them create them at run / parsing time
+    Attribute are serialized dynamically, whether we un-serialize
+    them create them at run / parsing time
 
     """
 

@@ -158,10 +158,10 @@ class SatelliteLink(Item):
         super(SatelliteLink, self).__init__(params, parsing)
 
         # My interface context
-        self.broks={}
-        self.external_commands={}
-        self.actions={}
-        self.wait_homerun={}
+        self.broks = {}
+        self.actions = {}
+        self.wait_homerun = {}
+        self.external_commands = {}
 
         if not parsing:
             print("No parsing: %s" % params)
@@ -262,10 +262,10 @@ class SatelliteLink(Item):
         :rtype: list
         """
         res = (self.broks, self.actions, self.wait_homerun, self.external_commands)
-        self.broks={}
-        self.actions={}
-        self.wait_homerun={}
-        self.external_commands={}
+        self.broks = {}
+        self.actions = {}
+        self.wait_homerun = {}
+        self.external_commands = {}
         return res
 
     def get_and_clear_broks(self):
@@ -359,7 +359,7 @@ class SatelliteLink(Item):
         self.attempt = min(self.attempt + 1, self.max_check_attempts)
 
         logger.debug("Failed attempt to %s (%d/%d), reason: %s",
-                       self.name, self.attempt, self.max_check_attempts, reason)
+                     self.name, self.attempt, self.max_check_attempts, reason)
         # Don't need to warn again and again if the satellite is already dead
         # Only warn when it is alive
         if self.alive:
@@ -436,7 +436,7 @@ class SatelliteLink(Item):
         if test:
             self.managed_confs = {}
             if getattr(self, 'schedulers', None):
-                # I am a simple satellite
+                # I am a simple satellite
                 for (key, val) in self.schedulers.iteritems():
                     self.managed_confs[key] = val['push_flavor']
             elif getattr(self, 'conf', None):
@@ -570,14 +570,14 @@ class SatelliteLink(Item):
             self.con.get('wait_new_conf')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
-            self.add_failed_check_attempt("Connection error when waiting new configuration: %s" 
+            self.add_failed_check_attempt("Connection error when waiting new configuration: %s"
                                           % str(exp))
             self.set_dead()
         except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
-            self.add_failed_check_attempt("Connection timeout when waiting new configuration: %s" 
+            self.add_failed_check_attempt("Connection timeout when waiting new configuration: %s"
                                           % str(exp))
         except HTTPClientException as exp:
-            self.add_failed_check_attempt("Error when waiting new configuration: %s" 
+            self.add_failed_check_attempt("Error when waiting new configuration: %s"
                                           % str(exp))
 
         return False
@@ -632,12 +632,15 @@ class SatelliteLink(Item):
             # todo: do not handle the result to confirm?
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
-            self.add_failed_check_attempt("Connection error when removing from configuration: %s" % str(exp))
+            self.add_failed_check_attempt("Connection error when "
+                                          "removing from configuration: %s" % str(exp))
             self.set_dead()
         except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
-            self.add_failed_check_attempt("Connection timeout when removing from configuration: %s" % str(exp))
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "removing from configuration: %s" % str(exp))
         except HTTPClientException as exp:
-            self.add_failed_check_attempt("Error when removing from configuration: %s" % str(exp))
+            self.add_failed_check_attempt("Error when "
+                                          "removing from configuration: %s" % str(exp))
 
         return False
 

@@ -172,7 +172,8 @@ class BaseSatellite(Daemon):
         :return: list of satellites
         :rtype: alignak.objects.SatelliteLinks
         """
-        print("Get '%s' satellites list for: %s / %s" % (s_type if s_type else 'All', self.type, self.name))
+        print("Get '%s' satellites list for: %s / %s" % (s_type if s_type else 'All',
+                                                         self.type, self.name))
         # print("Self: %s / %s" % (self, self.__dict__))
         satellites = {
             'arbiter': getattr(self, 'arbiters', []),
@@ -447,8 +448,6 @@ class BaseSatellite(Daemon):
                 for link_uuid in received_satellites:
                     print("- %s / %s" % (link_uuid, received_satellites[link_uuid]))
                     # Must look if we already had a configuration and save our context
-                    # old_link_uuid = self.get_previous_link(self.cur_conf, link_uuid, link_type[:-11])
-
                     already_got = received_satellites.get('_id') in my_satellites
                     broks = {}
                     actions = {}
@@ -618,7 +617,8 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
         # I do not know this scheduler?
         scheduler_link = self.schedulers.get(scheduler_link_uuid)
         if scheduler_link is None:
-            logger.warning("I do not know this scheduler: %s / %s", scheduler_link_uuid, self.schedulers)
+            logger.warning("I do not know this scheduler: %s / %s",
+                           scheduler_link_uuid, self.schedulers)
             return []
 
         ret, scheduler_link.wait_homerun = scheduler_link.wait_homerun, {}

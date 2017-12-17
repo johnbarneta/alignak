@@ -133,7 +133,7 @@ class Item(AlignakObject):
             super(Item, self).__init__(params, parsing)
             return
 
-        # Creating a new Alignak object instance
+        # Creating a new Alignak object instance
         self.uuid = uuid.uuid4().hex
 
         # For custom variables

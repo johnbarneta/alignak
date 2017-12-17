@@ -259,6 +259,7 @@ from alignak.version import VERSION as __version__
 
 SECTION_CONFIGURATION = "alignak-configuration"
 
+
 class AlignakConfigParser(object):
     """
     Class to parse the Alignak main configuration file
@@ -452,6 +453,7 @@ class AlignakConfigParser(object):
             return []
 
         return self._search_sections('module.')
+
 
 def main():
     """
