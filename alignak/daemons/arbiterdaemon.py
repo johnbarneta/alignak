@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2017: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -205,18 +205,18 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                         self.external_commands.append(external_command)
 
     def get_broks_from_satellitelinks(self):
-        """Get broks from my internal satellitelinks (satellite status)
+        """Get broks from my internal satellite links
 
         :return: None
-        TODO: Why satellitelink obj have broks and not the app itself?
         """
         for satellites in [self.conf.brokers, self.conf.schedulers,
                            self.conf.pollers, self.conf.reactionners, self.conf.receivers]:
             for satellite in satellites:
-                new_broks = satellite.get_all_broks()
+                logger.debug("Getting broks from: %s", satellite)
+                new_broks = satellite.get_and_clear_broks()
                 for brok in new_broks:
-                    logger.debug("Satellite '%s' brok: %s", satellite, brok)
                     self.add(brok)
+                logger.debug("Got %d broks from: %s", len(new_broks), satellite)
 
     def get_initial_broks_from_satellitelinks(self):
         """Get initial broks from my internal satellitelinks (satellite status)
@@ -311,11 +311,11 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 new_cfg_daemons.append(daemon_cfg)
                 raw_objects[daemon_cfg['type']] = new_cfg_daemons
 
-            logger.info("Daemons configuration:")
+            logger.debug("Daemons configuration:")
             for daemon_type in ['arbiter', 'scheduler', 'broker',
                                 'poller', 'reactionner', 'receiver']:
                 for cfg_daemon in raw_objects[daemon_type]:
-                    logger.info(" - %s / %s", daemon_type, cfg_daemon)
+                    logger.debug(" - %s / %s", daemon_type, cfg_daemon)
 
             # and then get all modules from the configuration
             logger.info("Getting modules configuration...")
@@ -371,15 +371,15 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             # ... and that this arbiter do not need to receive a configuration
             lnk_arbiter.need_conf = False
 
-            # todo: is it really the right place to configure this ? Not sure at all!
-            # We export this data to our statsmgr object :)
-            statsd_host = getattr(self.conf, 'statsd_host', 'localhost')
-            statsd_port = getattr(self.conf, 'statsd_port', 8125)
-            statsd_prefix = getattr(self.conf, 'statsd_prefix', 'alignak')
-            statsd_enabled = getattr(self.conf, 'statsd_enabled', False)
-            statsmgr.register(lnk_arbiter.get_name(), 'arbiter',
-                              statsd_host=statsd_host, statsd_port=statsd_port,
-                              statsd_prefix=statsd_prefix, statsd_enabled=statsd_enabled)
+            # # todo: is it really the right place to configure this ? Not sure at all!
+            # # We export this data to our statsmgr object :)
+            # statsd_host = getattr(self.conf, 'statsd_host', 'localhost')
+            # statsd_port = getattr(self.conf, 'statsd_port', 8125)
+            # statsd_prefix = getattr(self.conf, 'statsd_prefix', 'alignak')
+            # statsd_enabled = getattr(self.conf, 'statsd_enabled', False)
+            # statsmgr.register(lnk_arbiter.get_name(), 'arbiter',
+            #                   statsd_host=statsd_host, statsd_port=statsd_port,
+            #                   statsd_prefix=statsd_prefix, statsd_enabled=statsd_enabled)
 
         if not self.link_to_myself:
             sys.exit("Error: I cannot find my own Arbiter object (%s), I bail out. "

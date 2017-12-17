@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2017: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -65,10 +65,9 @@ from alignak.brok import Brok
 from alignak.external_command import ExternalCommandManager
 from alignak.daemon import Daemon
 from alignak.http.scheduler_interface import SchedulerInterface
-from alignak.property import PathProp, IntegerProp, StringProp
+from alignak.property import IntegerProp, StringProp
 from alignak.satellite import BaseSatellite
 from alignak.objects.satellitelink import SatelliteLink
-from alignak.stats import statsmgr
 
 logger = logging.getLogger(__name__)  # pylint: disable=C0103
 
@@ -290,10 +289,10 @@ class Alignak(BaseSatellite):
                     already_got = received_satellites.get('_id') in my_satellites
                     if already_got:
                         print("Already got!")
-                        broks = my_satellites[link_uuid]['broks']
-                        running_id = my_satellites[link_uuid]['running_id']
+                        broks = my_satellites[link_uuid].broks
+                        running_id = my_satellites[link_uuid].running_id
                     else:
-                        broks = {}
+                        broks = []
                         running_id = 0
 
                     # My new satellite link...

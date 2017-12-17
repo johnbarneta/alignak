@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2017: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -623,9 +623,9 @@ class Dispatcher:
 
             # Brokers should have poller/reactionners links too
             if sat_type == "broker":
-                sat_link.cfg.update(realm.get_links_for_a_broker(self.pollers, self.reactionners,
-                                                                 self.receivers, self.conf.realms,
-                                                                 sat_link.manage_sub_realms))
+                sat_link.cfg.update({'satellites': realm.get_links_for_a_broker(
+                    self.pollers, self.reactionners, self.receivers, self.conf.realms,
+                    sat_link.manage_sub_realms)})
 
             # Dump the configuration part size
             pickled_conf = cPickle.dumps(sat_link.cfg)

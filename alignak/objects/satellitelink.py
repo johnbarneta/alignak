@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2017: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -244,6 +244,16 @@ class SatelliteLink(Item):
                            'hard_ssl_name_check': self.hard_ssl_name_check}
         self.arb_satmap.update(satellitemap)
 
+    def get_and_clear_broks(self):
+        """Get and clean all of our broks
+
+        :return: list of all broks in the satellite
+        :rtype: list
+        """
+        res = self.broks
+        self.broks = []
+        return res
+
     def create_connection(self):
         """Initialize HTTP connection with a satellite (con attribute) and
         set uri attribute
@@ -291,7 +301,7 @@ class SatelliteLink(Item):
 
         # We came from dead to alive! We must propagate the good news
         if not was_alive:
-            logger.info("Setting % satellite s as alive :)", self.name)
+            logger.info("Setting %s satellite as alive :)", self.name)
             brok = self.get_update_status_brok()
             self.broks.append(brok)
 
@@ -369,16 +379,6 @@ class SatelliteLink(Item):
 
         return False
 
-    def get_all_broks(self):
-        """Get and clean all of our broks
-
-        :return: list of all broks in the satellite
-        :rtype: list
-        """
-        res = self.broks
-        self.broks = []
-        return res
-
     def update_infos(self, now, test=False):
         """Update satellite info each self.check_interval seconds
         so we smooth arbiter actions for just useful actions.
@@ -438,7 +438,7 @@ class SatelliteLink(Item):
         # If the connection failed to initialize, bail out
         if self.con is None:
             self.add_failed_check_attempt('no connection exist on ping')
-            return
+            return False
 
         logger.debug("Pinging %s", self.name)
         try:
@@ -452,6 +452,8 @@ class SatelliteLink(Item):
             # This sould never happen! Except is the source code got modified!
             logger.warning("[%s] I responded '%s' to ping! WTF is it?", self.name, res)
             self.add_failed_check_attempt('ping / NOT pong')
+            # Return True anyway... someone answered!
+            return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when pinging: %s" % str(exp))
             self.set_dead()
@@ -494,15 +496,19 @@ class SatelliteLink(Item):
         return former_running_id != self.running_id
 
     def get_initial_broks(self, broker_name):
-        """Send a HTTP request to the satellite (GET /fill_initial_broks)
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN Send a HTTP request to the satellite (GET /fill_initial_broks)
+
         Used to build the initial broks for a broker connecting to a scheduler
+
+        The first ping ensure the satellite is there to avoid a big timeout
 
         :param broker_name: the concerned broker name
         :type broker_name: str
         :return: Boolean indicating if the running id changed
         :type: bool
         """
-        if not self.reachable:
+        if not self.reachable or not self.ping():
             logger.warning("Not reachable to get the initial broks: %s", self.name)
             return False
 
@@ -671,6 +677,7 @@ class SatelliteLink(Item):
         """Send a HTTP request to the satellite (GET /ping)
         and THEN Send a HTTP request to the satellite (POST /push_broks)
         Send broks to the satellite
+
         The first ping ensure the satellite is there to avoid a big timeout
 
         :param broks: Brok list to send
@@ -678,7 +685,7 @@ class SatelliteLink(Item):
         :return: True on success, False on failure
         :rtype: bool
         """
-        if not self.reachable:
+        if not self.reachable or not self.ping():
             logger.warning("Not reachable for push_broks: %s", self.name)
             return False
 
@@ -686,12 +693,117 @@ class SatelliteLink(Item):
             self.con.post('push_broks', {'broks': broks}, wait='long')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
-            self.add_failed_check_attempt("Connection error when pushing broks: %s" % str(exp))
+            self.add_failed_check_attempt("Connection error when "
+                                          "pushing broks: %s" % str(exp))
             self.set_dead()
         except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
-            self.add_failed_check_attempt("Connection timeout when pushing broks: %s" % str(exp))
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "pushing broks: %s" % str(exp))
         except HTTPClientException as exp:
-            self.add_failed_check_attempt("Error when pushing broks: %s" % str(exp))
+            self.add_failed_check_attempt("Error when "
+                                          "pushing broks: %s" % str(exp))
+
+        return False
+
+    def push_actions(self, actions, scheduler_id):
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN Send a HTTP request to the satellite (POST /push_broks)
+        Send broks to the satellite
+
+        The first ping ensure the satellite is there to avoid a big timeout
+
+        :param actions: Action list to send
+        :type actions: list
+        :param scheduler_id: Scheduler identifier
+        :type scheduler_id: uuid
+        :return: True on success, False on failure
+        :rtype: bool
+        """
+        if not self.reachable or not self.ping():
+            logger.warning("Not reachable for push_broks: %s", self.name)
+            return False
+
+        try:
+            self.con.post('push_actions', {'actions': actions,
+                                           'sched_id': scheduler_id}, wait='long')
+            return True
+        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection error when "
+                                          "pushing actions: %s" % str(exp))
+            self.set_dead()
+        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "pushing actions: %s" % str(exp))
+        except HTTPClientException as exp:
+            self.add_failed_check_attempt("Error when "
+                                          "pushing actions: %s" % str(exp))
+
+        return False
+
+    def push_results(self, results, scheduler_name):
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN Send a HTTP request to the satellite (POST /put_results)
+        Send actions results to the satellite
+
+        The first ping ensure the satellite is there to avoid a big timeout
+
+        :param results: Results list to send
+        :type results: list
+        :param scheduler_name: Scheduler name
+        :type scheduler_name: uuid
+        :return: True on success, False on failure
+        :rtype: bool
+        """
+        if not self.reachable or not self.ping():
+            logger.warning("Not reachable for push_broks: %s", self.name)
+            return False
+
+        try:
+            self.con.post('put_results', {'results': results,
+                                          'from': scheduler_name}, wait='long')
+            return True
+        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection error when "
+                                          "pushing actions: %s" % str(exp))
+            self.set_dead()
+        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "pushing actions: %s" % str(exp))
+        except HTTPClientException as exp:
+            self.add_failed_check_attempt("Error when "
+                                          "pushing actions: %s" % str(exp))
+
+        return False
+
+    def push_external_commands(self, commands):
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN Send a HTTP request to the satellite (POST /run_external_commands)
+        Send external commands to the satellite
+
+        The first ping ensure the satellite is there to avoid a big timeout
+
+        :param results: Results list to send
+        :type results: list
+        :return: True on success, False on failure
+        :rtype: bool
+        """
+        if not self.reachable or not self.ping():
+            logger.warning("Not reachable for push_external_commands: %s", self.name)
+            return False
+
+        try:
+            self.con.post('run_external_commands', {'cmds': commands}, wait='long')
+            return True
+        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection error when "
+                                          "pushing external commands: %s" % str(exp))
+            self.set_dead()
+        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "pushing external commands: %s" % str(exp))
+        except HTTPClientException as exp:
+            self.add_failed_check_attempt("Error when "
+                                          "pushing external commands: %s" % str(exp))
 
         return False
 
@@ -704,18 +816,13 @@ class SatelliteLink(Item):
         :return: External Command list on success, [] on failure
         :rtype: list
         """
-        if not self.reachable:
+        if not self.reachable or not self.ping():
             logger.warning("Not reachable for get_external_commands: %s", self.name)
             return []
 
         try:
             res = self.con.get('get_external_commands', wait='long')
-            tab = unserialize(str(res))
-            # Protect against bad return
-            if not isinstance(tab, list):
-                self.con = None
-                return []
-            return tab
+            return unserialize(res)
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when "
                                           "getting external commands: %s" % str(exp))
@@ -727,7 +834,106 @@ class SatelliteLink(Item):
             self.add_failed_check_attempt("Error when "
                                           "getting external commands: %s" % str(exp))
         except AlignakClassLookupException as exp:  # pragma: no cover, simple protection
-            logger.error('Cannot un-serialize external commands received: %s', exp)
+            logger.error('Cannot un-serialize received external commands: %s', exp)
+
+        return []
+
+    def get_broks(self, broker_name):
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN send a HTTP request to the satellite (GET /get_broks)
+        Get broks from satellite.
+        Un-serialize data received.
+
+        :param broker_name: the concerned broker name
+        :type broker_name: str
+        :return: Broks list on success, [] on failure
+        :rtype: list
+        """
+        if not self.reachable or not self.ping():
+            logger.warning("Not reachable for get_broks: %s", self.name)
+            return []
+
+        try:
+            res = self.con.get('get_broks', wait='long')
+            return unserialize(res)
+        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection error when "
+                                          "getting broks: %s" % str(exp))
+            self.set_dead()
+        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "getting broks: %s" % str(exp))
+        except HTTPClientException as exp:
+            self.add_failed_check_attempt("Error when "
+                                          "getting broks: %s" % str(exp))
+        except AlignakClassLookupException as exp:  # pragma: no cover, simple protection
+            logger.error('Cannot un-serialize received broks: %s', exp)
+
+        return []
+
+    def get_returns(self, scheduler_id):
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN send a HTTP request to the satellite (GET /get_returns)
+        Get actions results from satellite.
+        Un-serialize data received.
+
+        :param scheduler_id: the concerned broker name
+        :type scheduler_id: str
+        :return: Results list on success, [] on failure
+        :rtype: list
+        """
+        if not self.reachable or not self.ping():
+            logger.warning("Not reachable for get_returns: %s", self.name)
+            return []
+
+        try:
+            res = self.con.get('get_returns', {'sched_id': scheduler_id}, wait='long')
+            return unserialize(res)
+        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection error when "
+                                          "getting results: %s" % str(exp))
+            self.set_dead()
+        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "getting results: %s" % str(exp))
+        except HTTPClientException as exp:
+            self.add_failed_check_attempt("Error when "
+                                          "getting results: %s" % str(exp))
+        except AlignakClassLookupException as exp:  # pragma: no cover, simple protection
+            logger.error('Cannot un-serialize received results: %s', exp)
+
+        return []
+
+    def get_actions(self, params):
+        """Send a HTTP request to the satellite (GET /ping)
+        and THEN send a HTTP request to the satellite (GET /get_checks)
+        Get actions from satellite.
+        Un-serialize data received.
+
+        :param params: the request parameters
+        :type params: str
+        :return: Actions list on success, [] on failure
+        :rtype: list
+        """
+        if not self.reachable or not self.ping():
+            logger.warning("Not reachable for get_actions: %s", self.name)
+            return []
+
+        try:
+            res = self.con.get('get_returns', {'sched_id': params}, wait='long')
+            return unserialize(res, True)
+        except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection error when "
+                                          "getting actions: %s" % str(exp))
+            self.set_dead()
+        except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
+            self.add_failed_check_attempt("Connection timeout when "
+                                          "getting actions: %s" % str(exp))
+        except HTTPClientException as exp:
+            self.add_failed_check_attempt("Error when "
+                                          "getting actions: %s" % str(exp))
+        except AlignakClassLookupException as exp:  # pragma: no cover, simple protection
+            logger.error('Cannot un-serialize received actions: %s', exp)
 
         return []
 

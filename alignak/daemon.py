@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-lines
 #
-# Copyright (C) 2015-2016: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2017: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -373,11 +373,9 @@ class Daemon(object):
             self.alignak_env.parse()
 
             for prop, value in self.alignak_env.get_monitored_configuration().items():
-                print(" found Alignak monitoring configuration parameter, %s = %s" % (prop, value))
                 self.pre_log.append(("DEBUG",
                                      " found Alignak monitoring "
                                      "configuration parameter, %s = %s" % (prop, value)))
-                print(prop, value)
                 # Ignore empty value
                 if not value:
                     continue

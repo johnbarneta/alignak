@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2017: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -61,8 +61,6 @@ from alignak.misc.serialization import unserialize
 from alignak.satellite import Satellite
 from alignak.property import PathProp, IntegerProp, StringProp
 from alignak.external_command import ExternalCommand, ExternalCommandManager
-from alignak.http.client import HTTPClientException, HTTPClientConnectionException
-from alignak.http.client import HTTPClientTimeoutException
 from alignak.stats import statsmgr
 from alignak.http.receiver_interface import ReceiverInterface
 
@@ -267,82 +265,43 @@ class Receiver(Satellite):
             logger.debug("Resolved command: %s, result: %s", ext_cmd.cmd_line, cmd)
             if cmd and cmd['global']:
                 # Send global command to all our schedulers
-                for scheduler_id in self.schedulers:
-                    scheduler = self.schedulers[scheduler_id]
-                    scheduler.external_commands.append(ext_cmd)
+                for scheduler_link_uuid in self.schedulers:
+                    link = self.schedulers[scheduler_link_uuid]
+                    link.external_commands.append(ext_cmd)
 
         # Now for all alive schedulers, send the commands
         pushed_commands = 0
         failed_commands = 0
-        for scheduler_id in self.schedulers:
-            scheduler = self.schedulers[scheduler_id]
-            # TODO:  sched should be a SatelliteLink object and, thus, have a get_name() method
-            # but sometimes when an exception is raised because the scheduler is not available
-            # this is not True ... sched is a simple dictionary with a 'name' property!
+        for scheduler_link_uuid in self.schedulers:
+            link = self.schedulers[scheduler_link_uuid]
 
-            is_active = scheduler['active']
-            if not is_active:
+            if not link.active:
                 logger.warning("The scheduler '%s' is not active, it is not possible to push "
-                               "external commands from its connection!", scheduler['name'])
+                               "external commands to its connection!", link.name)
                 return
 
             # If there are some commands for this scheduler...
-            extcmds = scheduler['external_commands']
-            cmds = [extcmd.cmd_line for extcmd in extcmds]
-            if not cmds:
-                logger.debug("The scheduler '%s' has no commands.", scheduler['name'])
+            external_commands = link.external_commands
+            commands = [ext_cmd.cmd_line for ext_cmd in external_commands]
+            if not commands:
+                logger.debug("The scheduler '%s' has no commands.", link.name)
                 continue
 
-            # ...and the scheduler is alive
-            con = scheduler['con']
-            if con is None:
-                self.daemon_connection_init(scheduler_id, s_type='scheduler')
-
-            if con is None:
-                logger.warning("The connection for the scheduler '%s' cannot be established, it is "
-                               "not possible to push external commands.", scheduler['name'])
-                continue
-
-            sent = False
-
-            logger.debug("Sending %d commands to scheduler %s", len(cmds), scheduler['name'])
-            try:
-                con.post('run_external_commands', {'cmds': cmds})
-                sent = True
-            except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
-                logger.warning("[%s] %s", scheduler['name'], str(exp))
-                scheduler['con'] = None
-                continue
-            except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
-                logger.warning("Connection timeout with the scheduler '%s' when "
-                               "sending external commands: %s", scheduler['name'], str(exp))
-                scheduler['con'] = None
-                continue
-            except HTTPClientException as exp:  # pragma: no cover, simple protection
-                logger.error("Error with the scheduler '%s' when "
-                             "sending external commands: %s", scheduler['name'], str(exp))
-                scheduler['con'] = None
-                continue
-            except AttributeError as exp:  # pragma: no cover, simple protection
-                logger.warning("The scheduler %s should not be initialized: %s",
-                               scheduler['name'], str(exp))
-                logger.exception(exp)
-            except Exception as exp:  # pylint: disable=broad-except
-                logger.exception("A satellite raised an unknown exception (%s): %s", type(exp), exp)
-                raise
+            logger.debug("Sending %d commands to scheduler %s", len(commands), link.name)
+            sent = link.push_external_commands(commands)
 
             # Whether we sent the commands or not, clean the scheduler list
-            scheduler['external_commands'] = []
+            link.external_commands = []
 
             # If we didn't sent them, add the commands to the arbiter list
             if sent:
-                statsmgr.gauge('external-commands.pushed.%s' % scheduler['name'], len(cmds))
-                pushed_commands = pushed_commands + len(cmds)
+                statsmgr.gauge('external-commands.pushed.%s' % link.name, len(commands))
+                pushed_commands = pushed_commands + len(commands)
             else:
-                statsmgr.gauge('external-commands.failed.%s' % scheduler['name'], len(cmds))
-                failed_commands = failed_commands + len(cmds)
-                for extcmd in extcmds:
-                    self.external_commands.append(extcmd)
+                failed_commands = failed_commands + len(commands)
+                statsmgr.gauge('external-commands.failed.%s' % link.name, len(commands))
+                # Kepp the not sent commands... for a next try
+                self.external_commands.extend(external_commands)
 
         statsmgr.gauge('external-commands.pushed.all', pushed_commands)
         statsmgr.gauge('external-commands.failed.all', failed_commands)
