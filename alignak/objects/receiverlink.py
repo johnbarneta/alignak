@@ -70,14 +70,14 @@ class ReceiverLink(SatelliteLink):
         'accept_passive_unknown_check_results':
             BoolProp(default=False, fill_brok=['full_status'], to_send=True),
     })
-
-    def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
-        """
-        Add this reactionner to the realm
-
-        :return: None
-        """
-        self.realm.receivers.append(self)
+    #
+    # def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
+    #     """
+    #     Add this reactionner to the realm
+    #
+    #     :return: None
+    #     """
+    #     self.realm.receivers.append(self)
 
 
 class ReceiverLinks(SatelliteLinks):

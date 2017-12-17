@@ -237,12 +237,12 @@ class Receiver(Satellite):
                 ExternalCommandManager(None, 'receiver', self,
                                        self_conf.get('accept_passive_unknown_check_results', False))
 
-            # Initialize connection with all our satellites
-            my_satellites = self.get_links_of_type(s_type=None)
-            for sat_link in my_satellites:
-                satellite = my_satellites[sat_link]
-                print("Initialize connection with: %s" % satellite)
-                self.daemon_connection_init(satellite.uuid, s_type=satellite.type)
+            # # Initialize connection with all our satellites
+            # my_satellites = self.get_links_of_type(s_type=None)
+            # for sat_link in my_satellites:
+            #     satellite = my_satellites[sat_link]
+            #     print("Initialize connection with: %s" % satellite)
+            #     self.daemon_connection_init(satellite.uuid, s_type=satellite.type)
 
     def push_external_commands_to_schedulers(self):
         """Send a HTTP request to the schedulers (POST /run_external_commands)
@@ -356,7 +356,7 @@ class Receiver(Satellite):
             if not self.do_daemon_init_and_start():
                 return
 
-            self.load_modules_manager(self.name)
+            self.load_modules_manager()
 
             #  We wait for initial conf
             self.wait_for_initial_conf()

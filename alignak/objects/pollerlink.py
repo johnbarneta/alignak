@@ -73,13 +73,13 @@ class PollerLink(SatelliteLink):
             ListProp(default=['None'], to_send=True),
     })
 
-    def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
-        """
-        Add this relation to the realm
-
-        :return: None
-        """
-        self.realm.pollers.append(self)
+    # def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
+    #     """
+    #     Add this relation to the realm
+    #
+    #     :return: None
+    #     """
+    #     self.realm.pollers.append(self)
 
     def give_satellite_cfg(self):
         """

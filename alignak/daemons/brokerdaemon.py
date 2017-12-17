@@ -334,23 +334,34 @@ class Broker(BaseSatellite):
                 for link_uuid in received_satellites:
                     print("- %s / %s" % (link_uuid, received_satellites[link_uuid]))
                     logger.debug("[%s] - my current %s: %s", self.name, link_type, my_satellites)
+
                     # Must look if we already had a configuration and save our broks
                     already_got = received_satellites.get('_id') in my_satellites
+                    broks = {}
+                    actions = {}
+                    wait_homerun = {}
+                    external_commands = {}
+                    running_id = 0
                     if already_got:
                         print("Already got!")
-                        broks = my_satellites[link_uuid]['broks']
-                        running_id = my_satellites[link_uuid]['running_id']
-                    else:
-                        broks = {}
-                        running_id = 0
+                        # Save some information
+                        running_id = my_satellites[link_uuid].running_id
+                        (broks, actions,
+                         wait_homerun, external_commands) = link.get_and_clear_context()
+                        # Delete the former link
+                        del my_satellites[link_uuid]
 
                     # My new satellite link...
                     new_link = SatelliteLink.get_a_satellite_link(
                         link_type[:-1], received_satellites[link_uuid])
-                    print("My new %s satellite: %s" % (link_type, new_link))
                     my_satellites[link_uuid] = new_link
+                    print("My new %s satellite: %s" % (link_type, new_link))
+
                     new_link.running_id = running_id
+                    new_link.external_commands = external_commands
                     new_link.broks = broks
+                    new_link.wait_homerun = wait_homerun
+                    new_link.actions = actions
 
                     # replacing sattelite address and port by those defined in satellitemap
                     if new_link.name in self_conf.get('satellitemap', {}):
@@ -542,7 +553,7 @@ class Broker(BaseSatellite):
             if not self.do_daemon_init_and_start():
                 return
 
-            self.load_modules_manager(self.name)
+            self.load_modules_manager()
 
             #  We wait for initial conf
             self.wait_for_initial_conf()

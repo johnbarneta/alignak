@@ -88,13 +88,13 @@ class SchedulerLink(SatelliteLink):
             IntegerProp(default=0),
     })
 
-    def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
-        """
-        Add this reactionner to the realm
-
-        :return: None
-        """
-        self.realm.schedulers.append(self)
+    # def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
+    #     """
+    #     Add this reactionner to the realm
+    #
+    #     :return: None
+    #     """
+    #     self.realm.schedulers.append(self)
 
     def give_satellite_cfg(self):
         """

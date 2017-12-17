@@ -532,7 +532,6 @@ class Dispatcher:
                         'override_conf': scheduler_link.get_override_configuration(),
                         # 'modules': scheduler_link.modules
                     })
-                    # scheduler_link.conf_package = conf_package
 
                     # The configuration part is assigned to a scheduler
                     part.is_assigned = True

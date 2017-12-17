@@ -277,6 +277,10 @@ class Daemon(object):
         'monitoring_config_files':
             ListProp(default=[]),
 
+        # Daemon modules
+        'modules':
+            ListProp(default=[]),
+
         # Local statsd daemon for collecting daemon metrics
         'statsd_host':
             StringProp(default='localhost'),
@@ -790,15 +794,14 @@ class Daemon(object):
                        "If you really need this feature, please log "
                        "an issue in the project repository;)")
 
-    def load_modules_manager(self, daemon_name):
-        """Instantiate Modulesmanager and load the SyncManager (multiprocessing)
+    def load_modules_manager(self):
+        """Instantiate the dameon ModulesManager and load the SyncManager (multiprocessing)
 
         :param daemon_name: daemon name
         :type elt: str
         :return: None
         """
-        self.modules_manager = ModulesManager(self, self.sync_manager,
-                                              max_queue_size=getattr(self, 'max_queue_size', 0))
+        self.modules_manager = ModulesManager(self)
 
     def change_to_workdir(self):
         """Change working directory to working attribute

@@ -292,14 +292,7 @@ class BaseSatellite(Daemon):
             logger.info("[%s] The running id of the %s %s changed (%s), "
                         "we must clear its context.",
                         self.name, s_type, link.name, link.running_id)
-            if hasattr(link, 'external_commands'):
-                link.external_commands.clear()
-            if hasattr(link, 'actions'):
-                link.actions.clear()
-            if hasattr(link, 'wait_homerun'):
-                link.wait_homerun.clear()
-            if hasattr(link, 'broks'):
-                link.broks.clear()
+            (_, _, _, _) = link.get_and_clear_context()
 
         # If I am a broker and I reconnect to my scheduler
         # pylint: disable=E1101
@@ -457,23 +450,17 @@ class BaseSatellite(Daemon):
                     # old_link_uuid = self.get_previous_link(self.cur_conf, link_uuid, link_type[:-11])
 
                     already_got = received_satellites.get('_id') in my_satellites
-                    external_commands = {}
-                    wait_homerun = {}
-                    actions = {}
                     broks = {}
+                    actions = {}
+                    wait_homerun = {}
+                    external_commands = {}
                     running_id = 0
                     if already_got:
                         print("Already got!")
                         # Save some information
-                        running_id = my_satellites[link_uuid]['running_id']
-                        if 'external_commands' in my_satellites[link_uuid]:
-                            external_commands = my_satellites[link_uuid].external_commands
-                        if 'broks' in my_satellites[link_uuid]:
-                            broks = my_satellites[link_uuid].broks
-                        if 'wait_homerun' in my_satellites[link_uuid]:
-                            wait_homerun = my_satellites[link_uuid].wait_homerun
-                        if 'actions' in my_satellites[link_uuid]:
-                            actions = my_satellites[link_uuid].actions
+                        running_id = my_satellites[link_uuid].running_id
+                        (broks, actions,
+                         wait_homerun, external_commands) = link.get_and_clear_context()
                         # Delete the former link
                         del my_satellites[link_uuid]
 
@@ -528,6 +515,9 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
 
         self.returns_queue = None
         self.q_by_mod = {}
+
+        # Modules are only loaded one time
+        self.have_modules = False
 
         # round robin queue ic
         self.rr_qid = 0
@@ -1175,16 +1165,19 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
             # ------------------
 
             # Now manage modules
-            # TODO: check how to better handle this with modules_manager..
-            mods = unserialize(self_conf['modules'], True)
-            self.new_modules_conf = []
-            for module in mods:
-                # If we already got it, bypass
-                if module.get_name() not in self.q_by_mod:
-                    logger.info("Add module object: %s", module)
-                    self.new_modules_conf.append(module)
-                    logger.info("Got module: %s ", module.get_name())
-                    self.q_by_mod[module.get_name()] = {}
+            if not self.have_modules:
+                self.modules = self_conf['modules']
+                print("I received some modules configuration: %s" % self_conf)
+                print("I received some modules configuration: %s" % self.modules)
+                self.have_modules = True
+
+                for module in self.modules:
+                    if module.name not in self.q_by_mod:
+                        self.q_by_mod[module.name] = {}
+
+                self.do_load_modules(self.modules)
+                # and start external modules too
+                self.modules_manager.start_external_instances()
 
             # Initialize connection with all our satellites
             print("***Get my satellites")
@@ -1249,18 +1242,13 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
 
             self.do_post_daemon_init()
 
-            self.load_modules_manager(self.name)
+            self.load_modules_manager()
 
             # We wait for initial conf
             self.wait_for_initial_conf()
             if not self.new_conf:  # we must have either big problem or was requested to shutdown
                 return
             self.setup_new_conf()
-
-            # We can load our modules now
-            self.do_load_modules(self.new_modules_conf)
-            # And even start external ones
-            self.modules_manager.start_external_instances()
 
             # Allocate Mortal Threads
             self.adjust_worker_number_by_load()

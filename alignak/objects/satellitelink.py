@@ -44,8 +44,8 @@
 This module provides an abstraction layer for communications between Alignak daemons
 Used by the Arbiter
 """
-import time
 import logging
+import time
 
 from alignak.util import get_obj_name_two_args_and_void
 from alignak.misc.serialization import unserialize, get_alignak_class, AlignakClassLookupException
@@ -158,7 +158,7 @@ class SatelliteLink(Item):
         super(SatelliteLink, self).__init__(params, parsing)
 
         # My interface context
-        self.broks=[]
+        self.broks={}
         self.external_commands={}
         self.actions={}
         self.wait_homerun={}
@@ -195,6 +195,8 @@ class SatelliteLink(Item):
             'schedulers': {},
             'arbiters': {}
         }
+
+        # self.register_to_my_realm()
 
         # Create the link connection
         if not self.con:
@@ -244,14 +246,36 @@ class SatelliteLink(Item):
                            'hard_ssl_name_check': self.hard_ssl_name_check}
         self.arb_satmap.update(satellitemap)
 
+    def register_to_my_realm(self):
+        """Add this satellite link to the realm
+
+        :return: None
+        """
+        print("Register %s to %s" % (self, self.realm))
+        getattr(self.realm, "%ss" % self.type).append(self)
+        # self.realm.brokers.append(self)
+
+    def get_and_clear_context(self):
+        """Get and clean all of our broks, actions, external commands and homerun
+
+        :return: list of all broks of the satellite link
+        :rtype: list
+        """
+        res = (self.broks, self.actions, self.wait_homerun, self.external_commands)
+        self.broks={}
+        self.actions={}
+        self.wait_homerun={}
+        self.external_commands={}
+        return res
+
     def get_and_clear_broks(self):
         """Get and clean all of our broks
 
-        :return: list of all broks in the satellite
+        :return: list of all broks of the satellite link
         :rtype: list
         """
         res = self.broks
-        self.broks = []
+        self.broks = {}
         return res
 
     def create_connection(self):
@@ -303,7 +327,7 @@ class SatelliteLink(Item):
         if not was_alive:
             logger.info("Setting %s satellite as alive :)", self.name)
             brok = self.get_update_status_brok()
-            self.broks.append(brok)
+            self.broks[brok.uuid] = brok
 
     def set_dead(self):
         """Set the satellite into dead state:
@@ -321,7 +345,7 @@ class SatelliteLink(Item):
         if was_alive:
             logger.warning("Setting the satellite %s as dead :(", self.name)
             brok = self.get_update_status_brok()
-            self.broks.append(brok)
+            self.broks[brok.uuid] = brok
 
     def add_failed_check_attempt(self, reason=''):
         """Go in reachable=False and add a failed attempt
@@ -423,7 +447,7 @@ class SatelliteLink(Item):
 
         # Update the state of this element
         brok = self.get_update_status_brok()
-        self.broks.append(brok)
+        self.broks[brok.uuid] = brok
 
     def ping(self):
         """Send a HTTP request to the satellite (GET /ping)
@@ -973,17 +997,6 @@ class SatelliteLink(Item):
         :rtype: dict
         """
         return super(SatelliteLink, self).serialize()
-        # return self.serialize()
-        # return {'instance_id': self.instance_id,
-        #         'type': self.type, 'name': self.name,
-        #         'port': self.port, 'address': self.address,
-        #         # 'uri': self.uri,
-        #         'use_ssl': self.use_ssl, 'hard_ssl_name_check': self.hard_ssl_name_check,
-        #         'timeout': self.timeout, 'data_timeout': self.data_timeout,
-        #         'active': True, 'reachable': True,
-        #         'current_attempt': self.attempt,
-        #         'max_check_attempts': self.max_check_attempts
-        #         }
 
 
 class SatelliteLinks(Items):
@@ -1007,36 +1020,40 @@ class SatelliteLinks(Items):
         :type modules: list
         :return: None
         """
-        self.linkify_s_by_p(realms)
-        self.linkify_s_by_plug(modules)
+        logger.debug("Linkify %s with %s and %s", self, realms, modules)
+        self.linkify_s_by_realm(realms)
+        self.linkify_s_by_module(modules)
 
-    def linkify_s_by_p(self, realms):
+    def linkify_s_by_realm(self, realms):
         """Link realms in all SatelliteLink
 
         :param realms: Realm object list
         :type realms: list
         :return: None
         """
-        for satlink in self:
-            r_name = satlink.realm.strip()
-            # If no realm name, take the default one
-            if r_name == '':
+        for link in self:
+            realm_name = link.realm.strip()
+            # If no realm name, use the default one
+            if realm_name == '':
                 realm = realms.get_default()
             else:  # find the realm one
-                realm = realms.find_by_name(r_name)
+                realm = realms.find_by_name(realm_name)
+
             # Check if what we get is OK or not
-            if realm is not None:
-                satlink.realm = realm.uuid
-                satlink.realm_name = realm.get_name()
-                getattr(realm, '%ss' % satlink.my_type).append(satlink.uuid)
-                # case SatelliteLink has manage_sub_realms
-                if getattr(satlink, 'manage_sub_realms', False):
-                    print("Daemon Manage sub realms: %s: %s" % (
-                    satlink.name, getattr(satlink, 'manage_sub_realms', False)))
-                    print("Manage sub realms: %s" % satlink.name)
-                    for r_uuid in realm.all_sub_members:
-                        getattr(realms[r_uuid], '%ss' % satlink.my_type).append(satlink.uuid)
-            else:
-                err = "The %s %s got a unknown realm '%s'" % \
-                      (satlink.__class__.my_type, satlink.get_name(), r_name)
-                satlink.add_error(err)
+            if not realm:
+                link.add_error("The %s %s has an unknown realm '%s'"
+                               % (link.type, link.name, realm_name))
+                continue
+
+            link.realm = realm.uuid
+            link.realm_name = realm.get_name()
+            logger.debug("Linkify %s with %s", link, realm)
+            print("Linkify %s with %s" % (link, realm))
+            getattr(realm, '%ss' % link.my_type).append(link.uuid)
+
+            # case SatelliteLink has manage_sub_realms
+            if getattr(link, 'manage_sub_realms', False):
+                for r_uuid in realm.all_sub_members:
+                    logger.debug("Linkify %s with %s", link, realms[r_uuid])
+                    print("Linkify %s with %s", link, realms[r_uuid])
+                    getattr(realms[r_uuid], '%ss' % link.my_type).append(link.uuid)

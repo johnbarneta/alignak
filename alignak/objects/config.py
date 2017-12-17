@@ -1415,7 +1415,6 @@ class Config(Item):  # pylint: disable=R0904,R0902
         self.realms.linkify()
 
         # Link all satellite links with realms
-        # self.arbiters.linkify(self.modules)
         self.schedulers.linkify(self.realms, self.modules)
         self.brokers.linkify(self.realms, self.modules)
         self.receivers.linkify(self.realms, self.modules)
@@ -1677,6 +1676,11 @@ class Config(Item):  # pylint: disable=R0904,R0902
             reactionner = ReactionnerLink({'name': 'Default-Reactionner',
                                            'address': 'localhost', 'port': '7769'})
             self.reactionners = ReactionnerLinks([reactionner])
+        if not self.receivers:
+            logger.warning("No receiver defined, I am adding one at localhost:7773")
+            receiver = ReceiverLink({'name': 'Default-Receiver',
+                                     'address': 'localhost', 'port': '7773'})
+            self.receivers = ReceiverLinks([receiver])
         if not self.brokers:
             logger.warning("No broker defined, I am adding one at localhost:7772")
             broker = BrokerLink({'name': 'Default-Broker',
@@ -1689,10 +1693,12 @@ class Config(Item):  # pylint: disable=R0904,R0902
                       self.receivers, self.schedulers]
         for satellites_list in satellites:
             for satellite in satellites_list:
-                if not hasattr(satellite, 'realm') or getattr(satellite, 'realm') == '':
-                    satellite.realm = default_realm.get_name()
+                print("Satellite: %s" % satellite)
+                if not satellite.realm:
+                    satellite.realm = default_realm.uuid
                     satellite.realm_name = default_realm.get_name()
-                    logger.info("Tagging %s with realm %s", satellite.get_name(), satellite.realm)
+                    logger.info("Tagging %s with realm %s", satellite.name, satellite.realm_name)
+                    print("Tagging %s with realm %s" % (satellite.name, satellite.realm_name))
 
         # Parse hosts for realms and set host in the default realm is no realm is set
         hosts_realms_names = set()
@@ -1789,7 +1795,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
     def got_arbiter_module_type_defined(self, module_type):
         """Check if a module type is defined in one of the arbiters
-        Also check the module_alias
+        Also check the module name
 
         :param module_type: module type to search for
         :type module_type: str
@@ -1801,13 +1807,13 @@ class Config(Item):  # pylint: disable=R0904,R0902
             # Do like the linkify will do after....
             for module in getattr(arbiter, 'modules', []):
                 # So look at what the arbiter try to call as module
-                module = module.strip()
+                module_name = module.strip()
                 # Ok, now look in modules...
                 for mod in self.modules:
                     # try to see if this module is the good type
                     if getattr(mod, 'python_name', '').strip() == module_type.strip():
                         # if so, the good name?
-                        if getattr(mod, 'module_alias', '').strip() == module:
+                        if getattr(mod, 'name', '').strip() == module_name:
                             return True
         return False
 
@@ -2519,7 +2525,6 @@ class Config(Item):  # pylint: disable=R0904,R0902
                 (cls, clss, inner_property, initial_index, clonable) = types_creations[o_type]
                 if not clonable:
                     logger.debug("  . do not clone: %s", inner_property)
-                    # print("  . do not clone: %s" % (inner_property))
                     continue
                 # todo: Indeed contactgroups should be managed like hostgroups...
                 if inner_property in ['hostgroups', 'servicegroups']:

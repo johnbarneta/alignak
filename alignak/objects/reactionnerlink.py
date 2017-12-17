@@ -71,13 +71,13 @@ class ReactionnerLink(SatelliteLink):
             ListProp(default=['None'], to_send=True),
     })
 
-    def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
-        """
-        Add this reactionner to the realm
-
-        :return: None
-        """
-        self.realm.reactionners.append(self)
+    # def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere
+    #     """
+    #     Add this reactionner to the realm
+    #
+    #     :return: None
+    #     """
+    #     self.realm.reactionners.append(self)
 
     def give_satellite_cfg(self):
         """
