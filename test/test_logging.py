@@ -50,8 +50,8 @@ import logging
 import os.path
 from datetime import datetime
 
-from logging import DEBUG, INFO, WARNING
-from alignak.log import setup_logger, DEFAULT_FORMATTER_NAMED
+from logging import DEBUG, INFO, WARNING, Formatter
+from alignak.log import setup_logger
 
 from alignak_test import AlignakTest, CollectorHandler
 
@@ -65,7 +65,7 @@ class TestLogging(AlignakTest):
 
         # Add collector for test purpose.
         collector_h = CollectorHandler()
-        collector_h.setFormatter(DEFAULT_FORMATTER_NAMED)
+        collector_h.setFormatter(Formatter('[%(created)i] %(levelname)s: [%(name)s] %(message)s'))
         self.logger.addHandler(collector_h)
         # self.assertEqual(len(self.logger.handlers), 1)
 
@@ -202,7 +202,3 @@ class TestLogging(AlignakTest):
         msg = "Message"
         self.logger.info(msg)
         self.assert_any_log_match('[\[0-9\]*] INFO: \[%s\] %s' % (self.logger.name, msg))
-
-
-if __name__ == '__main__':
-    AlignakTest.main()

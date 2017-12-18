@@ -709,6 +709,8 @@ class Daemon(object):
             if self.log_loop:
                 logger.debug("[%s] --- %d", self.name, self.loop_count)
             _ts = time.time()
+
+            # Each loop
             self.do_loop_turn()
 
             # If someone asked us to dump memory, do it
@@ -762,10 +764,11 @@ class Daemon(object):
                                  my_process.status(), " ".join(perfdatas))
 
             if self.activity_log_period and (self.loop_count % self.activity_log_period == 1):
-                logger.info("Daemon %s is alive", self.name)
+                logger.info("Daemon %s is alive: %s", self.name, self.loop_count)
 
             if self.log_loop:
                 logger.debug("[%s] +++ %d", self.name, self.loop_count)
+
             # Maybe we ask us to die, if so, do it :)
             if self.interrupted:
                 logger.info("[%s] Someone asked us to stop", self.name)
@@ -1628,7 +1631,7 @@ class Daemon(object):
                              when=self.log_rotation_when, interval=self.log_rotation_interval,
                              backup_count=self.log_rotation_count,
                              human_date_format=self.human_date_format,
-                             process_name='')
+                             process_name=self.name)
             except IOError as exp:  # pragma: no cover, not with unit tests...
                 logger.error("Opening the log file '%s' failed with '%s'", self.log_filename, exp)
                 sys.exit(2)

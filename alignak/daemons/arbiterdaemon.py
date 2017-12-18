@@ -252,7 +252,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         if self.verify_only:
             # Force the global logger at INFO level
             alignak_logger = logging.getLogger("alignak")
-            alignak_logger.setLevel(logging.INFO)
+            alignak_logger.setLevel(logging.INFO if not self.debug else logging.DEBUG)
             logger.info("-----")
             logger.info("Arbiter is in configuration check mode")
             logger.info("-----")
@@ -1052,6 +1052,8 @@ class Arbiter(Daemon):  # pylint: disable=R0902
             loop_count += 1
             if self.log_loop:
                 logger.debug("--- %d", loop_count)
+            if loop_count > 2:
+                self.must_run = False
 
             # Try to see if one of my module is dead, and
             # try to restart previously dead modules :)
