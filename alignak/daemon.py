@@ -519,7 +519,7 @@ class Daemon(object):
                                       % (self.name, dirname, exp))
 
         # pid file is stored in the working directory
-        self.pid = 0
+        self.pid = os.getpid()
         self.pid_filename = PathProp().pythonize("%s.pid" % self.name)
         self.pid_filename = os.path.abspath(os.path.join(self.workdir, self.pid_filename))
         if 'pid_filename' in kwargs and kwargs['pid_filename']:
@@ -1628,7 +1628,7 @@ class Daemon(object):
                              when=self.log_rotation_when, interval=self.log_rotation_interval,
                              backup_count=self.log_rotation_count,
                              human_date_format=self.human_date_format,
-                             process_name=self.name)
+                             process_name='')
             except IOError as exp:  # pragma: no cover, not with unit tests...
                 logger.error("Opening the log file '%s' failed with '%s'", self.log_filename, exp)
                 sys.exit(2)
@@ -1647,7 +1647,7 @@ class Daemon(object):
 
         # We can now output some previously silenced debug output
         if self.pre_log:
-            logger.debug("--- Messages stored prior to our configuration:")
+            logger.debug("--- Start - Log prior to our configuration:")
             for level, message in self.pre_log:
                 if level.lower() == "debug":
                     logger.debug("--- %s", message)
@@ -1655,4 +1655,4 @@ class Daemon(object):
                     logger.info("--- %s", message)
                 elif level.lower() == "warning":
                     logger.warning("--- %s", message)
-            logger.debug("---")
+            logger.debug("--- Stop - Log prior to our configuration")

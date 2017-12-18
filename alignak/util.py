@@ -1323,7 +1323,7 @@ def parse_daemon_args(arbiter=False):
                              'Deprecated parameter, do not use it anymore!')
 
     parser.add_argument('-d', '--daemon', dest='is_daemon', default=False, action='store_true',
-                        help='Run as a daemon.')
+                        help='Run as a daemon. Fork the launched process and daemonize.')
 
     parser.add_argument('-r', '--replace', dest='do_replace', default=False, action='store_true',
                         help='Replace previous running daemon if any pid file is found.')

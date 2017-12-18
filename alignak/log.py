@@ -106,29 +106,29 @@ def setup_logger(logger_, level=logging.INFO, log_file=None, log_console=True,
         logger_.setLevel(level)
 
     if human_log:
-        fmt_string = '[%(asctime)s] %(levelname)s: '
+        fmt_string = '[%(asctime)s] %(levelname)s: ['
         if process_name:
             # Include Alignak daemon name in the log
-            fmt_string += '[%s.' % process_name
+            fmt_string += '%s.' % process_name
         fmt_string += '%(name)s] %(message)s'
     else:
-        fmt_string = '[%(created)i] %(levelname)s: '
+        fmt_string = '[%(created)i] %(levelname)s: ['
         if process_name:
             # Include Alignak daemon name in the log
-            fmt_string += '[%s.' % process_name
+            fmt_string += '%s.' % process_name
         fmt_string += '%(name)s] %(message)s'
     formatter = Formatter(fmt_string, human_date_format)
 
     if log_console and hasattr(sys.stdout, 'isatty'):
         for handler in logger_.handlers:
             if isinstance(handler, ColorStreamHandler):
-                if handler.level != level:
-                    handler.setLevel(level)
+                handler.setLevel(level)
                 handler.setFormatter(formatter)
                 break
         else:
             csh = ColorStreamHandler(sys.stdout)
             csh.setFormatter(formatter)
+            csh.setLevel(level)
             logger_.addHandler(csh)
 
     if log_file:

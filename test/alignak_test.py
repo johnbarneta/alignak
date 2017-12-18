@@ -33,13 +33,12 @@ import locale
 import unittest2
 
 import logging
-from logging import Handler
+from logging import Handler, Formatter
 
 import requests_mock
 
 import alignak
 from alignak.bin.alignak_environment import AlignakConfigParser
-from alignak.log import DEFAULT_FORMATTER_NAMED, ROOT_LOGGER_NAME
 from alignak.objects.config import Config
 from alignak.objects.command import Command
 from alignak.objects.module import Module
@@ -103,7 +102,7 @@ class AlignakTest(unittest2.TestCase):
 
         # Add collector for test purpose.
         collector_h = CollectorHandler()
-        collector_h.setFormatter(DEFAULT_FORMATTER_NAMED)
+        collector_h.setFormatter(Formatter('[%(created)i] %(levelname)s: [%(name)s] %(message)s'))
         self.logger.addHandler(collector_h)
 
     def _files_update(self, files, replacements):
