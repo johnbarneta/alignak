@@ -61,11 +61,11 @@ class SchedulerLink(SatelliteLink):
     properties = SatelliteLink.properties.copy()
     properties.update({
         'type':
-            StringProp(default='scheduler', fill_brok=['full_status']),
+            StringProp(default='scheduler', fill_brok=['full_status'], to_send=True),
         'scheduler_name':
             StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
-            IntegerProp(default=7768, fill_brok=['full_status']),
+            IntegerProp(default=7768, fill_brok=['full_status'], to_send=True),
         'weight':
             IntegerProp(default=1, fill_brok=['full_status']),
         'skip_initial_broks':

@@ -56,11 +56,11 @@ class ReactionnerLink(SatelliteLink):
     properties = SatelliteLink.properties.copy()
     properties.update({
         'type':
-            StringProp(default='reactionner', fill_brok=['full_status']),
+            StringProp(default='reactionner', fill_brok=['full_status'], to_send=True),
         'reactionner_name':
             StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
-            IntegerProp(default=7769, fill_brok=['full_status']),
+            IntegerProp(default=7769, fill_brok=['full_status'], to_send=True),
         'min_workers':
             IntegerProp(default=1, fill_brok=['full_status'], to_send=True),
         'max_workers':

@@ -65,13 +65,13 @@ class ArbiterLink(SatelliteLink):
     properties = SatelliteLink.properties.copy()
     properties.update({
         'type':
-            StringProp(default='arbiter', fill_brok=['full_status']),
+            StringProp(default='arbiter', fill_brok=['full_status'], to_send=True),
         'arbiter_name':
             StringProp(default='', fill_brok=['full_status']),
         'host_name':
             StringProp(default=socket.gethostname()),
         'port':
-            IntegerProp(default=7770),
+            IntegerProp(default=7770, to_send=True),
     })
 
     def is_me(self):  # pragma: no cover, seems not to be used anywhere

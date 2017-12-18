@@ -55,11 +55,11 @@ class BrokerLink(SatelliteLink):
     properties = SatelliteLink.properties.copy()
     properties.update({
         'type':
-            StringProp(default='broker', fill_brok=['full_status']),
+            StringProp(default='broker', fill_brok=['full_status'], to_send=True),
         'broker_name':
             StringProp(default='', fill_brok=['full_status'], to_send=True),
         'port':
-            IntegerProp(default=7772, fill_brok=['full_status']),
+            IntegerProp(default=7772, fill_brok=['full_status'], to_send=True),
     })
 
     # def register_to_my_realm(self):  # pragma: no cover, seems not to be used anywhere

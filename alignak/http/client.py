@@ -121,9 +121,9 @@ class HTTPClient(object):
         self._requests_con = requests.Session()
         self.set_proxy(proxy)
 
-    def __repr__(self):
-        return "%s %s, SSL: %s" % (self.__class__.__name__, self.uri, self.use_ssl)
-    __str__ = __repr__
+    # def __repr__(self):
+    #     return "%s %s, SSL: %s" % (self.__class__.__name__, self.uri, self.use_ssl)
+    # __str__ = __repr__
 
     @property
     def connection(self):

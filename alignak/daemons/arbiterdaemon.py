@@ -369,7 +369,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # Create objects for our arbiters and modules
         self.conf.early_create_objects(raw_objects)
 
-        self.conf.early_arbiter_linking()
+        self.conf.early_arbiter_linking(self.name)
 
         # Search which arbiter I am in the arbiter links list
         for lnk_arbiter in self.conf.arbiters:

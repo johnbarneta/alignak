@@ -2255,12 +2255,12 @@ class Scheduler(object):  # pylint: disable=R0902
 
         # Now connect to the passive satellites if needed
         for s_id in self.pollers:
-            if not self.pollers[s_id]['passive']:
+            if not self.pollers[s_id].passive:
                 continue
             self.sched_daemon.daemon_connection_init(s_id, 'poller')
 
         for s_id in self.reactionners:
-            if not self.reactionners[s_id]['passive']:
+            if not self.reactionners[s_id].passive:
                 continue
             self.sched_daemon.daemon_connection_init(s_id, 'reactionner')
 

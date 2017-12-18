@@ -1276,15 +1276,17 @@ class Config(Item):  # pylint: disable=R0904,R0902
         # Create the objects list and set it in our properties
         setattr(self, prop, clss(lst, initial_index))
 
-    def early_arbiter_linking(self):
+    def early_arbiter_linking(self, arbiter_name):
         """ Prepare the arbiter for early operations
 
+        :param arbiter_name: default arbiter name if no arbiter exist in the configuration
+        :type arbiter_name: str
         :return: None
         """
 
         if not self.arbiters:
-            logger.warning("There is no arbiter, I add one in localhost:7770")
-            arb = ArbiterLink({'name': 'Default-Arbiter',
+            logger.warning("There is no arbiter, I add one (%s) in localhost:7770", arbiter_name)
+            arb = ArbiterLink({'name': arbiter_name,
                                'host_name': socket.gethostname(),
                                'address': 'localhost', 'port': '7770',
                                'spare': '0'})
@@ -1663,30 +1665,35 @@ class Config(Item):  # pylint: disable=R0904,R0902
 
         if not self.schedulers:
             logger.warning("No scheduler defined, I am adding one at localhost:7768")
-            satellite = SchedulerLink({'name': 'Default-Scheduler',
-                                    'address': 'localhost', 'port': '7768'})
+            satellite = SchedulerLink({'name': 'Default-Scheduler', 'alignak_launched': True,
+                                       'address': 'localhost', 'port': '7768'})
             self.schedulers = SchedulerLinks([satellite])
+            self.missing_daemons.append(satellite)
         if not self.pollers:
             logger.warning("No poller defined, I am adding one at localhost:7771")
-            poller = PollerLink({'name': 'Default-Poller',
-                                 'address': 'localhost', 'port': '7771'})
-            self.pollers = PollerLinks([poller])
+            satellite = PollerLink({'name': 'Default-Poller', 'alignak_launched': True,
+                                    'address': 'localhost', 'port': '7771'})
+            self.pollers = PollerLinks([satellite])
+            self.missing_daemons.append(satellite)
         if not self.reactionners:
             logger.warning("No reactionner defined, I am adding one at localhost:7769")
-            reactionner = ReactionnerLink({'name': 'Default-Reactionner',
-                                           'address': 'localhost', 'port': '7769'})
-            self.reactionners = ReactionnerLinks([reactionner])
+            satellite = ReactionnerLink({'name': 'Default-Reactionner', 'alignak_launched': True,
+                                         'address': 'localhost', 'port': '7769'})
+            self.reactionners = ReactionnerLinks([satellite])
+            self.missing_daemons.append(satellite)
         if not self.receivers:
             logger.warning("No receiver defined, I am adding one at localhost:7773")
-            receiver = ReceiverLink({'name': 'Default-Receiver',
-                                     'address': 'localhost', 'port': '7773'})
-            self.receivers = ReceiverLinks([receiver])
+            satellite = ReceiverLink({'name': 'Default-Receiver', 'alignak_launched': True,
+                                      'address': 'localhost', 'port': '7773'})
+            self.receivers = ReceiverLinks([satellite])
+            self.missing_daemons.append(satellite)
         if not self.brokers:
             logger.warning("No broker defined, I am adding one at localhost:7772")
-            broker = BrokerLink({'name': 'Default-Broker',
-                                 'address': 'localhost', 'port': '7772',
-                                 'manage_arbiters': '1'})
-            self.brokers = BrokerLinks([broker])
+            satellite = BrokerLink({'name': 'Default-Broker', 'alignak_launched': True,
+                                    'address': 'localhost', 'port': '7772',
+                                    'manage_arbiters': '1'})
+            self.brokers = BrokerLinks([satellite])
+            self.missing_daemons.append(satellite)
 
         # Affect default realm to the satellites that do not have a defined realm
         satellites = [self.pollers, self.brokers, self.reactionners,
@@ -1733,6 +1740,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     for realm in self.realms[realms_names_ids[satellite.realm]].all_sub_members:
                         sat_realms_names.add(realm)
 
+            print("Realms: %s/ %s" % (hosts_realms_names, sat_realms_names))
             if not hosts_realms_names.issubset(sat_realms_names):
                 for realm in hosts_realms_names.difference(sat_realms_names):
                     self.add_warning("Some hosts exist in the realm '%s' but no %s is "

@@ -74,13 +74,23 @@ class SatelliteLink(Item):
     properties.update(Daemon.properties.copy())
     properties.update({
         'instance_id':
-            StringProp(),
+            StringProp(to_send=True),
+
+        # When this property is set, the Arbiter will launch the corresponding daemon
+        'alignak_launched':
+            BoolProp(default=False, fill_brok=['full_status'], to_send=True),
+
         # A satellite link has the type/name of the daemon it is related to
+        'type':
+            StringProp(default='', fill_brok=['full_status'], to_send=True),
         'name':
-            StringProp(default='', fill_brok=['full_status']),
-        # Address used by the other daemons
+            StringProp(default='', fill_brok=['full_status'], to_send=True),
+
+        # Listening interface and address used by the other daemons
+        'host':
+            StringProp(default='0.0.0.0', to_send=True),
         'address':
-            StringProp(default='localhost', fill_brok=['full_status']),
+            StringProp(default='localhost', fill_brok=['full_status'], to_send=True),
         'active':
             BoolProp(default=True, fill_brok=['full_status']),
         'timeout':
@@ -95,9 +105,9 @@ class SatelliteLink(Item):
         'max_failed_connections':
             IntegerProp(default=3, fill_brok=['full_status']),
         'spare':
-            BoolProp(default=False, fill_brok=['full_status']),
+            BoolProp(default=False, fill_brok=['full_status'], to_send=True),
         'manage_sub_realms':
-            BoolProp(default=False, fill_brok=['full_status']),
+            BoolProp(default=False, fill_brok=['full_status'], to_send=True),
         'manage_arbiters':
             BoolProp(default=False, fill_brok=['full_status'], to_send=True),
         'modules':
@@ -114,9 +124,9 @@ class SatelliteLink(Item):
         'satellitemap':
             DictProp(default={}, elts_prop=AddrProp, to_send=True, override=True),
         'use_ssl':
-            BoolProp(default=False, fill_brok=['full_status']),
+            BoolProp(default=False, fill_brok=['full_status'], to_send=True),
         'hard_ssl_name_check':
-            BoolProp(default=True, fill_brok=['full_status']),
+            BoolProp(default=True, fill_brok=['full_status'], to_send=True),
         'passive':
             BoolProp(default=False, fill_brok=['full_status'], to_send=True),
     })
@@ -161,11 +171,15 @@ class SatelliteLink(Item):
     def __init__(self, params=None, parsing=True):
         super(SatelliteLink, self).__init__(params, parsing)
 
+        # self.con = None
+        #
         # My interface context
         self.broks = {}
         self.actions = {}
         self.wait_homerun = {}
         self.external_commands = {}
+
+        self.init_running_properties()
 
         if not parsing:
             print("No parsing: %s" % params)
@@ -297,8 +311,6 @@ class SatelliteLink(Item):
                                   timeout=self.timeout, data_timeout=self.data_timeout,
                                   use_ssl=self.use_ssl, strong_ssl=self.hard_ssl_name_check)
             self.uri = self.con.uri
-            # Set the satellite as alive
-            self.set_alive()
         except HTTPClientException as exp:
             logger.error("Error with '%s' when creating client: %s", self.name, str(exp))
             # Set the satellite as dead
@@ -389,20 +401,20 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.error("[%s] Sending: %s" % (self.name, configuration))
             self.con.post('put_conf', {'conf': configuration}, wait='long')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             logger.warning("[%s] Connection error when sending configuration: %s",
                            self.name, str(exp))
             self.add_failed_check_attempt(reason=str(exp))
-            # self.set_dead()
         except HTTPClientTimeoutException as exp:  # pragma: no cover, simple protection
             logger.warning("[%s] Connection timeout when sending configuration: %s",
                            self.name, str(exp))
             self.add_failed_check_attempt(reason=str(exp))
         except HTTPClientException as exp:  # pragma: no cover, simple protection
             logger.error("[%s] Error when sending configuration: %s", self.name, str(exp))
-            self.con = None
+            self.add_failed_check_attempt(reason=str(exp))
         except AttributeError as exp:  # pragma: no cover, simple protection
             # Connection is not created
             logger.error("[%s] put_conf - Connection does not exist!", self.name)
@@ -427,17 +439,13 @@ class SatelliteLink(Item):
 
         # We ping and update the managed list
         if test:
+            # Set the satellite as alive
             self.set_alive()
         else:
-            self.ping()
-        if not self.alive:
-            logger.info("Not alive for ping: %s", self.name)
-            return False
-
-        if self.attempt > 0:
-            logger.debug("Not responding to ping: %s (%d / %d)",
-                         self.name, self.attempt, self.max_check_attempts)
-            return False
+            if not self.ping():
+                logger.debug("Not responding to ping: %s (%d / %d)",
+                             self.name, self.attempt, self.max_check_attempts)
+                return False
 
         if test:
             self.managed_confs = {}
@@ -491,6 +499,8 @@ class SatelliteLink(Item):
             self.add_failed_check_attempt("Connection timeout when pinging: %s" % str(exp))
         except HTTPClientException as exp:
             self.add_failed_check_attempt("Error when pinging: %s" % str(exp))
+
+        logger.info("No ping response from %s", self.name)
 
         return False
 
@@ -855,7 +865,8 @@ class SatelliteLink(Item):
 
         try:
             res = self.con.get('get_external_commands', wait='long')
-            return unserialize(res)
+            logger.debug("Got external commands from %s: %s", self.name, res)
+            return res
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when "
                                           "getting external commands: %s" % str(exp))
@@ -888,7 +899,8 @@ class SatelliteLink(Item):
 
         try:
             res = self.con.get('get_broks', wait='long')
-            return unserialize(res)
+            logger.debug("Got broks from %s: %s", self.name, res)
+            return res
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when "
                                           "getting broks: %s" % str(exp))
@@ -921,7 +933,8 @@ class SatelliteLink(Item):
 
         try:
             res = self.con.get('get_returns', {'sched_id': scheduler_id}, wait='long')
-            return unserialize(res)
+            logger.debug("Got returns from %s: %s", self.name, res)
+            return res
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when "
                                           "getting results: %s" % str(exp))
@@ -954,6 +967,7 @@ class SatelliteLink(Item):
 
         try:
             res = self.con.get('get_returns', {'sched_id': params}, wait='long')
+            logger.debug("Got actions from %s: %s", self.name, res)
             return unserialize(res, True)
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when "
@@ -989,12 +1003,17 @@ class SatelliteLink(Item):
 
         Overridden by the specific satellites links
 
-        TODO: this should be replaced with an object serialization!
-
         :return: dictionary of information common to all the links
         :rtype: dict
         """
-        return super(SatelliteLink, self).serialize()
+        # All the satellite link class properties that are 'to_send' are stored in a
+        # dictionary to be pushed to the satellite when the configuration is dispatched
+        res = {}
+        properties = self.__class__.properties
+        for prop, entry in properties.items():
+            if hasattr(self, prop) and entry.to_send:
+                res[prop] = getattr(self, prop)
+        return res
 
 
 class SatelliteLinks(Items):

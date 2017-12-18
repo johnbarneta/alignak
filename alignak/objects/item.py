@@ -130,6 +130,7 @@ class Item(AlignakObject):
         # logger.debug("Initializing a %s with %s", self.my_type, params)
         if not parsing:
             # Unserializing an existing object
+            # todo: Why not initializing the running properties in this case?
             super(Item, self).__init__(params, parsing)
             return
 

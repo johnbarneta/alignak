@@ -427,10 +427,8 @@ class BaseSatellite(Daemon):
                               statsd_enabled=self_conf.get('statsd_enabled', False))
 
             logger.info("[%s] Received a new configuration, containing:", self.name)
-            print("[%s] Received a new configuration, containing:" % self.name)
             for key in self.cur_conf:
                 logger.info("[%s] - %s", self.name, key)
-                print(" - %s = %s" % (key, self.cur_conf[key]))
             logger.debug("[%s] satellite self configuration part: %s", self.name, self_conf)
 
             # Now we create our arbiters and schedulers links
@@ -766,7 +764,7 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
 
             for sched_id in self.schedulers:
                 sched = self.schedulers[sched_id]
-                for act in sched['actions'].values():
+                for act in sched.actions.values():
                     if act.status == 'queue' and act.worker_id == w_id:
                         # Got a check that will NEVER return if we do not restart it
                         self.assign_to_a_queue(act)
@@ -995,7 +993,7 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
                         actions_count = queue.qsize()
                         results_count = self.returns_queue.qsize()
                         logger.debug("[%s][%s][%s] actions queued: %d, results queued: %d",
-                                     sched['name'], mod, worker_id, actions_count, results_count)
+                                     sched.name, mod, worker_id, actions_count, results_count)
                         # Update the statistics
                         statsmgr.gauge('core.worker-%s.actions-queue-size' % worker_id,
                                        actions_count)
@@ -1066,7 +1064,7 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
 
         for _, sched in self.schedulers.iteritems():
             logger.debug("[%s] scheduler home run: %d results",
-                         self.name, len(sched['wait_homerun']))
+                         self.name, len(sched.wait_homerun))
 
         # If we are passive, we do not initiate the check getting
         # and return
