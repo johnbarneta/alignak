@@ -376,6 +376,14 @@ class AlignakConfigParser(object):
                 found_sections[section].update({key: value})
         return found_sections
 
+    def get_defaults(self):
+        """
+        Get all the parameters defined in the DEFAULT ini file section...
+
+        :return: a dict containing the default parameters
+        """
+        return self.config.defaults()
+
     def get_monitored_configuration(self):
         """
         Get the Alignak monitored configuration parameters
@@ -392,12 +400,17 @@ class AlignakConfigParser(object):
 
     def get_alignak_configuration(self):
         """
-        Get the Alignak global parameters. Indeed all the parameters defined in the DEFAULT
-        ini file section...
+        Get the Alignak configuration parameters, except the variables starting with 'cfg'
 
-        :return: a dict containing the Alignak parameters
+        :return: a dict containing the Alignak configuration files
         """
-        return self.config.defaults()
+        configuration = self._search_sections(SECTION_CONFIGURATION)
+        if SECTION_CONFIGURATION not in configuration:
+            return []
+        for prop, value in configuration[SECTION_CONFIGURATION].items():
+            if prop.startswith('cfg'):
+                configuration[SECTION_CONFIGURATION].pop(prop)
+        return configuration[SECTION_CONFIGURATION]
 
     def get_daemons(self, name=None, type=None):
         """

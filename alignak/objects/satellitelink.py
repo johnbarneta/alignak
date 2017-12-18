@@ -401,7 +401,7 @@ class SatelliteLink(Item):
             return False
 
         try:
-            logger.error("[%s] Sending: %s" % (self.name, configuration))
+            logger.debug("[%s] Sending: %s", self.name, configuration)
             self.con.post('put_conf', {'conf': configuration}, wait='long')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
@@ -517,6 +517,7 @@ class SatelliteLink(Item):
         former_running_id = self.running_id
 
         try:
+            logger.debug("[%s] Getting running id: %s", self.name)
             self.running_id = self.con.get('get_running_id')
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when getting "
@@ -553,6 +554,7 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.debug("[%s] Getting initial broks", self.name)
             self.con.get('fill_initial_broks', {'bname': broker_name}, wait='long')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
@@ -582,7 +584,7 @@ class SatelliteLink(Item):
             return False
 
         try:
-            logger.warning("Arbiter wants me to wait for a new configuration")
+            logger.warning("Arbiter master wants me to wait for a new configuration")
             self.con.get('wait_new_conf')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
@@ -612,6 +614,7 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.debug("[%s] Having a configuration ?", self.name)
             return self.con.get('have_conf', {'magic_hash': magic_hash})
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
             self.add_failed_check_attempt("Connection error when testing "
@@ -644,6 +647,7 @@ class SatelliteLink(Item):
             return
 
         try:
+            logger.debug("[%s] Removing from the configuration", self.name)
             self.con.get('remove_from_conf', {'sched_id': sched_id})
             # todo: do not handle the result to confirm?
             return True
@@ -674,6 +678,7 @@ class SatelliteLink(Item):
             return
 
         try:
+            logger.debug("[%s] Getting managed configuration", self.name)
             res = self.con.get('what_i_managed')
             self.managed_confs = res
             # self.managed_confs = unserialize(str(res))
@@ -733,6 +738,7 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.debug("[%s] Pushing %d broks", self.name, len(broks))
             self.con.post('push_broks', {'broks': broks}, wait='long')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection
@@ -767,6 +773,7 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.debug("[%s] Pushing %d actions", self.name, len(actions))
             self.con.post('push_actions', {'actions': actions,
                                            'sched_id': scheduler_id}, wait='long')
             return True
@@ -802,6 +809,7 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.debug("[%s] Pushing %d results", self.name, len(results))
             self.con.post('put_results', {'results': results,
                                           'from': scheduler_name}, wait='long')
             return True
@@ -835,6 +843,7 @@ class SatelliteLink(Item):
             return False
 
         try:
+            logger.debug("[%s] Pushing %d external commands", self.name, len(commands))
             self.con.post('run_external_commands', {'cmds': commands}, wait='long')
             return True
         except HTTPClientConnectionException as exp:  # pragma: no cover, simple protection

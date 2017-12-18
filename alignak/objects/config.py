@@ -1276,7 +1276,7 @@ class Config(Item):  # pylint: disable=R0904,R0902
         # Create the objects list and set it in our properties
         setattr(self, prop, clss(lst, initial_index))
 
-    def early_arbiter_linking(self, arbiter_name):
+    def early_arbiter_linking(self, arbiter_name, params):
         """ Prepare the arbiter for early operations
 
         :param arbiter_name: default arbiter name if no arbiter exist in the configuration
@@ -1285,11 +1285,15 @@ class Config(Item):  # pylint: disable=R0904,R0902
         """
 
         if not self.arbiters:
-            logger.warning("There is no arbiter, I add one (%s) in localhost:7770", arbiter_name)
-            arb = ArbiterLink({'name': arbiter_name,
-                               'host_name': socket.gethostname(),
-                               'address': 'localhost', 'port': '7770',
-                               'spare': '0'})
+            params.update({
+                'name': arbiter_name,
+                'host_name': socket.gethostname(),
+                'address': '127.0.0.1', 'port': 7770,
+                'spare': '0'
+            })
+            logger.warning("There is no arbiter, I add myself (%s) reachable on %s:%d",
+                           arbiter_name, params['address'], params['port'])
+            arb = ArbiterLink(params, parsing=True)
             self.arbiters = ArbiterLinks([arb])
 
         # First fill default
@@ -1460,12 +1464,12 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     line = prop
                 unmanaged.append(line)
         if unmanaged:
-            logger.warning("The following parameter(s) are not currently managed.")
+            logger.warning("The following parameter(s) are not currently managed:")
 
             for line in unmanaged:
-                logger.info(line)
+                logger.warning('- ' + line)
 
-            logger.warning("Unmanaged configuration statements, do you really need it?"
+            logger.warning("Those are unmanaged configuration statements, do you really need it? "
                            "Create an issue on the Alignak repository or submit a pull "
                            "request: http://www.github.com/Alignak-monitoring/alignak")
 
@@ -1740,7 +1744,6 @@ class Config(Item):  # pylint: disable=R0904,R0902
                     for realm in self.realms[realms_names_ids[satellite.realm]].all_sub_members:
                         sat_realms_names.add(realm)
 
-            print("Realms: %s/ %s" % (hosts_realms_names, sat_realms_names))
             if not hosts_realms_names.issubset(sat_realms_names):
                 for realm in hosts_realms_names.difference(sat_realms_names):
                     self.add_warning("Some hosts exist in the realm '%s' but no %s is "

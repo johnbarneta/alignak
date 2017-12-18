@@ -205,9 +205,7 @@ class Receiver(Satellite):
 
         # ...then our own specific treatment!
         with self.conf_lock:
-            print("Receiver - New configuration for: %s / %s" % (self.type, self.name))
             logger.info("[%s] Received a new configuration", self.name)
-            print("Receiver - My schedulers: %s" % self.schedulers)
 
             # self_conf is our own configuration from the alignak environment
             self_conf = self.cur_conf['self_conf']

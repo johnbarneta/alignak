@@ -38,12 +38,12 @@ ROOT_LOGGER_LEVEL = logging.INFO
 # Default ISO8601 UTC date formatting:
 HUMAN_DATE_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
 
-# Default log formatter (no human timestamp)
-DEFAULT_FORMATTER_NAMED = Formatter('[%(created)i] %(levelname)s: [%(name)s] %(message)s')
-
-# Human timestamped log formatter
-HUMAN_FORMATTER_NAMED = Formatter('[%(asctime)s] %(levelname)s: [%(name)s] %(message)s',
-                                  HUMAN_DATE_FORMAT)
+# # Default log formatter (no human timestamp)
+# DEFAULT_FORMATTER_NAMED = Formatter('[%(created)i] %(levelname)s: [%(name)s] %(message)s')
+#
+# # Human timestamped log formatter
+# HUMAN_FORMATTER_NAMED = Formatter('[%(asctime)s] %(levelname)s: [%(name)s] %(message)s',
+#                                   HUMAN_DATE_FORMAT)
 
 # Time rotation for file logger
 ROTATION_WHEN = 'midnight'
@@ -76,7 +76,7 @@ class ColorStreamHandler(StreamHandler):
 
 def setup_logger(logger_, level=logging.INFO, log_file=None, log_console=True,
                  when=ROTATION_WHEN, interval=ROTATION_INTERVAL, backup_count=ROTATION_COUNT,
-                 human_log=False, human_date_format=HUMAN_DATE_FORMAT):
+                 human_log=False, human_date_format=HUMAN_DATE_FORMAT, process_name=''):
     """
     Configure the provided logger
     - appends a ColorStreamHandler if it is not yet present
@@ -92,7 +92,8 @@ def setup_logger(logger_, level=logging.INFO, log_file=None, log_console=True,
     :param when:
     :param interval:
     :param backup_count:
-    :param human_date_format
+    :param human_date_format: date formatting string
+    :param process_name: if set, include it in the logger name hierarchy
     :return: the modified logger object
     """
     if logger_ is None:
@@ -104,10 +105,19 @@ def setup_logger(logger_, level=logging.INFO, log_file=None, log_console=True,
             level = getattr(logging, level, None)
         logger_.setLevel(level)
 
-    formatter = DEFAULT_FORMATTER_NAMED
     if human_log:
-        formatter = Formatter('[%(asctime)s] %(levelname)s: [%(name)s] %(message)s',
-                              human_date_format)
+        fmt_string = '[%(asctime)s] %(levelname)s: '
+        if process_name:
+            # Include Alignak daemon name in the log
+            fmt_string += '[%s.' % process_name
+        fmt_string += '%(name)s] %(message)s'
+    else:
+        fmt_string = '[%(created)i] %(levelname)s: '
+        if process_name:
+            # Include Alignak daemon name in the log
+            fmt_string += '[%s.' % process_name
+        fmt_string += '%(name)s] %(message)s'
+    formatter = Formatter(fmt_string, human_date_format)
 
     if log_console and hasattr(sys.stdout, 'isatty'):
         for handler in logger_.handlers:

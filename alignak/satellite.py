@@ -394,7 +394,6 @@ class BaseSatellite(Daemon):
         :return: None
         """
         with self.conf_lock:
-            print("BaseSatellite - New configuration for: %s / %s" % (self.type, self.name))
             logger.info("[%s] Received a new configuration", self.name)
 
             # Clean our execution context
@@ -426,16 +425,15 @@ class BaseSatellite(Daemon):
                               statsd_prefix=self_conf.get('statsd_prefix', 'alignak'),
                               statsd_enabled=self_conf.get('statsd_enabled', False))
 
-            logger.info("[%s] Received a new configuration, containing:", self.name)
+            logger.debug("[%s] Received a new configuration, containing:", self.name)
             for key in self.cur_conf:
-                logger.info("[%s] - %s", self.name, key)
+                logger.debug("[%s] - %s", self.name, key)
             logger.debug("[%s] satellite self configuration part: %s", self.name, self_conf)
 
             # Now we create our arbiters and schedulers links
             for link_type in ['arbiters', 'schedulers']:
                 if link_type not in self.cur_conf:
                     logger.error("[%s] Missing %s in the configuration!", self.name, link_type)
-                    print("***[%s] Missing %s in the configuration!!!" % (self.name, link_type))
                     continue
 
                 received_satellites = self.cur_conf[link_type]
@@ -1120,7 +1118,6 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
 
         # ...then our own specific treatment!
         with self.conf_lock:
-            print("Satellite - New configuration for: %s / %s" % (self.type, self.name))
             logger.info("[%s] Received a new configuration", self.name)
 
             # self_conf is our own configuration from the alignak environment
@@ -1165,8 +1162,6 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
             # Now manage modules
             if not self.have_modules:
                 self.modules = self_conf['modules']
-                print("I received some modules configuration: %s" % self_conf)
-                print("I received some modules configuration: %s" % self.modules)
                 self.have_modules = True
 
                 for module in self.modules:
@@ -1178,11 +1173,11 @@ class Satellite(BaseSatellite):  # pylint: disable=R0902
                 self.modules_manager.start_external_instances()
 
             # Initialize connection with all our satellites
-            print("***Get my satellites")
+            logger.info("I got my satellites:")
             my_satellites = self.get_links_of_type(s_type=None)
             for sat_link in my_satellites:
                 satellite = my_satellites[sat_link]
-                print("***Initialize connection with: %s" % satellite)
+                logger.info("- initializing connection with: %s/%s", satellite.type, satellite.name)
                 self.daemon_connection_init(satellite.uuid, s_type=satellite.type)
 
     def get_stats_struct(self):

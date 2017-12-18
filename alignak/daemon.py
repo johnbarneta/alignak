@@ -379,7 +379,7 @@ class Daemon(object):
 
             for prop, value in self.alignak_env.get_monitored_configuration().items():
                 self.pre_log.append(("DEBUG",
-                                     " found Alignak monitoring "
+                                     "Found Alignak monitoring "
                                      "configuration parameter, %s = %s" % (prop, value)))
                 # Ignore empty value
                 if not value:
@@ -389,8 +389,11 @@ class Daemon(object):
                 if not os.path.isabs(value):
                     value = os.path.abspath(os.path.join(configuration_dir, value))
                 self.monitoring_config_files.append(value)
+            if not self.monitoring_config_files:
+                self.pre_log.append(("WARNING", "No Alignak monitoring configuration files"))
 
-            for prop, value in self.alignak_env.get_daemons(name=self.name).items():
+            my_configuration = self.alignak_env.get_daemons(name=self.name).items()
+            for prop, value in my_configuration:
                 self.pre_log.append(("DEBUG",
                                      " found daemon parameter, %s = %s" % (prop, value)))
                 if getattr(self, prop, None) is None:
@@ -408,6 +411,26 @@ class Daemon(object):
                     setattr(self, prop, my_properties[prop].pythonize(value))
                     self.pre_log.append(("DEBUG", " -> updating %s = %s to %s"
                                          % (prop, current_prop, getattr(self, prop))))
+            if not my_configuration:
+                self.pre_log.append(("WARNING",
+                                     "No defined configuration for the daemon: %s. "
+                                     "Using the 'alignak-configuration' section "
+                                     "variables as parameters for the daemon:" % self.name))
+                # Set the global Alignak configuration parametes as the current daemon properties
+                logger.info("Getting alignak configuration...")
+                for prop, value in self.alignak_env.get_alignak_configuration().items():
+                    if prop in ['name'] or prop.startswith('_'):
+                        self.pre_log.append(("WARNING",
+                                             "- ignoring '%s' variable." % prop))
+                        continue
+                    if prop in self.properties:
+                        entry = self.properties[prop]
+                        setattr(self, prop, entry.pythonize(value))
+                    else:
+                        setattr(self, prop, value)
+                    logger.info("- setting '%s' as %s", prop, getattr(self, prop))
+                    self.pre_log.append(("WARNING",
+                                         "- setting '%s' as %s" % (prop, getattr(self, prop))))
 
         except ValueError as exp:
             print("Daemon '%s' did not correctly read Alignak environment file: %s"
@@ -1596,26 +1619,24 @@ class Daemon(object):
         if self.debug:
             log_level = 'DEBUG'
 
-        # Set the human timestamp log if required
-        human_log_format = getattr(self, 'human_timestamp_log', False)
-
         # Register local log file if required
         if self.use_log_file:
             try:
                 # pylint: disable=E1101
-                setup_logger(None, level=log_level, human_log=human_log_format,
+                setup_logger(None, level=log_level, human_log=self.human_timestamp_log,
                              log_console=True, log_file=self.log_filename,
                              when=self.log_rotation_when, interval=self.log_rotation_interval,
                              backup_count=self.log_rotation_count,
-                             human_date_format=self.human_date_format)
+                             human_date_format=self.human_date_format,
+                             process_name=self.name)
             except IOError as exp:  # pragma: no cover, not with unit tests...
                 logger.error("Opening the log file '%s' failed with '%s'", self.log_filename, exp)
                 sys.exit(2)
             logger.debug("Using the local log file '%s'", self.log_filename)
             self.local_log_fds = get_logger_fds(None)
         else:  # pragma: no cover, not with unit tests...
-            setup_logger(None, level=log_level, human_log=human_log_format,
-                         log_console=True, log_file=None)
+            setup_logger(None, level=log_level, human_log=self.human_timestamp_log,
+                         log_console=True, log_file=None, process_name=self.name)
             logger.warning("No local log file")
 
         logger.debug("Alignak daemon logger configured")

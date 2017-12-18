@@ -253,7 +253,6 @@ class Alignak(BaseSatellite):
 
         # ...then our own specific treatment!
         with self.conf_lock:
-            print("Scheduler - New configuration for: %s / %s" % (self.type, self.name))
             logger.info("[%s] Received a new configuration", self.name)
 
             # self_conf is our own configuration from the alignak environment
@@ -276,7 +275,6 @@ class Alignak(BaseSatellite):
             for link_type in ['pollers', 'reactionners', 'brokers']:
                 if link_type not in self.cur_conf['satellites']:
                     logger.error("[%s] Missing %s in the configuration!", self.name, link_type)
-                    print("***[%s] Missing %s in the configuration!!!" % (self.name, link_type))
                     continue
 
                 received_satellites = self.cur_conf['satellites'][link_type]

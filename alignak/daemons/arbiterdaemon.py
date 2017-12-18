@@ -310,10 +310,14 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                 raw_objects[daemon_cfg['type']] = new_cfg_daemons
 
             logger.debug("Daemons configuration:")
+            some_daemons = False
             for daemon_type in ['arbiter', 'scheduler', 'broker',
                                 'poller', 'reactionner', 'receiver']:
                 for cfg_daemon in raw_objects[daemon_type]:
+                    some_daemons = True
                     logger.debug("- %s / %s", daemon_type, cfg_daemon)
+            if not some_daemons:
+                logger.warning("- No configured daemons.")
 
             # and then get all modules from the configuration
             logger.info("Getting modules configuration...")
@@ -333,9 +337,7 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                         module_cfg['type'] = module_cfg['module_types']
                         module_cfg.pop('module_types')
                 else:
-                    logger.info("- No modules.")
-            else:
-                logger.info("- No modules.")
+                    logger.info("- No configured modules.")
 
             #     logger.warning("Erasing modules configuration found in cfg files")
             # raw_objects['module'] = []
@@ -350,12 +352,16 @@ class Arbiter(Daemon):  # pylint: disable=R0902
                         new_cfg_daemons.append(cfg_module)
                 new_cfg_daemons.append(module_cfg)
                 raw_objects['module'].append(module_cfg)
+            if not raw_objects['module']:
+                logger.info("- No configured modules.")
 
             # and then the global configuration.
             # The properties defined in the alignak.cfg file are not yet set! So we set the one
             # got from the environment
             logger.info("Getting alignak configuration...")
             for key, value in self.alignak_env.get_alignak_configuration().items():
+                if key.startswith('_'):
+                    continue
                 if key in self.conf.properties:
                     entry = self.conf.properties[key]
                     setattr(self.conf, key, entry.pythonize(value))
@@ -369,14 +375,18 @@ class Arbiter(Daemon):  # pylint: disable=R0902
         # Create objects for our arbiters and modules
         self.conf.early_create_objects(raw_objects)
 
-        self.conf.early_arbiter_linking(self.name)
+        # Check that an arbiter link exists and create the appropriate relations
+        # If no arbiter exists, create one with the provided data
+        self.conf.early_arbiter_linking(self.name,
+                                        self.alignak_env.get_alignak_configuration())
 
         # Search which arbiter I am in the arbiter links list
         for lnk_arbiter in self.conf.arbiters:
             logger.debug("I have an arbiter in my configuration: %s", lnk_arbiter.name)
             if lnk_arbiter.name != self.name:
                 # Arbiter is not me!
-                logger.info("I found another arbiter in my configuration: %s", lnk_arbiter.name)
+                logger.info("I found another arbiter (%s) in my (%s) configuration",
+                            lnk_arbiter.name, self.name)
                 # And this arbiter needs to receive a configuration
                 lnk_arbiter.need_conf = True
                 continue
